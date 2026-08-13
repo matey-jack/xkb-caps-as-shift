@@ -19,6 +19,13 @@
     is already taken upstream: it means "Caps Lock acts as Shift *with locking*"
     and is a types rule (+caps(shift)).  caps:shift_modifier is the exact analog
     of the stock caps:ctrl_modifier, "Make Caps Lock an additional Ctrl".
+
+    The description deliberately does not promise "any two Shift keys toggle Caps
+    Lock": on its own this option leaves <LFSH> and <RTSH> untouched, so pressing
+    both of them together does nothing.  What it gives is Caps Lock plus either
+    Shift.  Making the two real Shift keys toggle Caps Lock as well is what the
+    separate stock option shift:both_capslock is for.  The wording below mirrors
+    the stock caps:escape_shifted_capslock, which describes the same mechanism.
   -->
   <optionList>
     <group allowMultipleSelection="false">
@@ -28,7 +35,7 @@
       <option>
         <configItem>
           <name>caps:shift_modifier</name>
-          <description>Make Caps Lock an additional Shift; any two Shift keys toggle Caps Lock</description>
+          <description>Make Caps Lock an additional Shift, but Shift + Caps Lock is the regular Caps Lock</description>
         </configItem>
       </option>
     </group>

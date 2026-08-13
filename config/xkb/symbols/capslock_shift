@@ -1,0 +1,37 @@
+// Caps Lock behaves as an additional (momentary) Shift key.
+// Shift then Caps Lock keys pressed together activates the actual classic CapsLock.
+//
+// Selected as the option caps:shift_modifier, registered into the stock 'caps'
+// group so the UI makes it exclusive with caps:none and the rest.  The section
+// name matches the option's suffix by convention only; ../rules/evdev is what
+// actually ties the two together.
+//
+// The file must NOT be named 'capslock', even though that is the stock file
+// holding the other 13 caps:* options.  Symbols files are located by searching
+// the include path and the first file of that name wins, so a user file called
+// 'capslock' shadows the stock one instead of extending it, and every other
+// caps:* option then fails to resolve:
+//     Error: No Symbols named "escape" in the include file "capslock"
+// libxkbcommon happens to retry the next include path and survive that, but
+// xkbcomp does not, and the fallback is an implementation detail rather than a
+// documented guarantee.  ../rules/evdev.xml is the one file here that really is
+// merged rather than shadowed, because libxkbregistry merges by design.
+//
+// The mapping itself is the same construct the stock shift(lshift_both_capslock)
+// uses for <LFSH>, only applied to <CAPS>.  The standard compat rules turn it
+// into: level 1 Shift_L -> SetMods(Shift), level 2 Caps_Lock -> LockMods(Lock).
+// Three consequences worth knowing:
+//  - while Caps Lock is on, <CAPS> sits at level 2, so pressing it releases the
+//    lock instead of acting as Shift.
+//  - symbols/pc binds the Caps_Lock keysym to the Lock modifier, so <CAPS> ends
+//    up in modifier_map Lock as well as Shift.  That is wanted, not a leak: it
+//    keeps the Caps Lock LED working, and the stock caps:escape_shifted_capslock
+//    has exactly the same property.
+//  - the modifier_map below is therefore redundant (symbols/pc already binds
+//    Shift_L to Shift).  It is kept to state the intent explicitly, the way
+//    capslock(super) and capslock(hyper) do.
+hidden partial modifier_keys
+xkb_symbols "shift_modifier" {
+    key <CAPS> { [  Shift_L,  Caps_Lock  ], type[group1]="ALPHABETIC" };
+    modifier_map Shift { <CAPS> };
+};

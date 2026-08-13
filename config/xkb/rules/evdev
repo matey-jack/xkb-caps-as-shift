@@ -1,12 +1,20 @@
 
-// On the left side of this rule the 'caps:' prefix is a UI grouping convention, 
+// On the left side of this rule the 'caps:' prefix is a UI grouping convention,
 // not a file name.
 //
-// The right side 'capslock' is the files name in the ../symbols folder'
-// and 'shift_modifier' is the section in that file.
+// The right side 'capslock_shift' is the file's name in the ../symbols folder
+// and 'shift_modifier' is the section in that file.  The file is deliberately
+// not called 'capslock' -- see the comment at the top of it for why that would
+// break every other caps:* option.
 ! option = symbols
-caps:shift_modifier = +capslock(shift_modifier)
+caps:shift_modifier = +capslock_shift(shift_modifier)
 
-// Since the rules reader stops searching file paths at the first one found, 
+// Since the rules reader stops searching file paths at the first one found,
 // we explicitly need to import the system rules.
+//
+// Keeping the include last also means our symbols are applied before all stock
+// ones, so any stock option that claims <CAPS> too (lv3:caps_switch,
+// grp:caps_toggle, ...) silently overrides caps:shift_modifier, whatever order
+// the options are listed in.  That is the safer direction to fail in, but it is
+// no substitute for a UI that stops the two from being selected together.
 ! include %S/evdev
