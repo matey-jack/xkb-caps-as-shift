@@ -36,12 +36,15 @@ less xkb-caps-options          # this is the whole product, not a bootstrap
 python3 xkb-caps-options --install
 ```
 
-`--install` runs the same seven steps as above, except that step 2 disappears: the xkb
-files are string constants inside the script, and step 4 is the script copying itself to
-`~/.local/bin`. When the installation is already in place, `--install` is a no-op that
-just re-verifies, so it doubles as the update and repair path. Running the tool without
-arguments goes straight to the menu, and `--uninstall` undoes everything from the same
-file.
+Explicit `python3` on that last line, because a file arriving over HTTP has no execute
+bit. It is needed exactly once: `--install` copies the script to `~/.local/bin` with mode
+0755, so every later run is just `xkb-caps-options`, which is what the `#!/usr/bin/env
+python3` shebang is there for.
+
+`--install` runs the same steps as above, minus the fetching, and minus the xkb config —
+see below. When everything is already in place it is a no-op that re-verifies, so it
+doubles as the update and repair path. Running the tool without arguments goes straight to
+the menu, and `--uninstall` undoes everything from the same file.
 
 ### Which is better for the user
 
@@ -63,14 +66,49 @@ which is both the thing you inspect and the thing you keep. Everything else foll
 there: one fetch instead of several, no half-installed state, and uninstall that still
 works when the repo has moved or you are offline.
 
-The cost is the one entry in the last row: the xkb config would exist both as files under
-`config/xkb/` and as string constants in the script, and those two can drift apart. Two
-ways to keep them honest, and doing both is cheap:
+### The xkb config is installed on demand
+
+The tool is useful without the xkb config. Every choice it offers except CapsLock-as-Shift
+is a stock xkb option, and the value it adds — one exclusive choice per key, across option
+groups that no existing UI keeps consistent — needs nothing installed at all. So
+`--install` places the script and stops there, and the config under
+`$XDG_CONFIG_HOME/xkb/` is written the first time the user actually selects
+CapsLock-as-Shift.
+
+This is worth doing for its own sake, not just to save a step. The merge into an existing
+`rules/evdev` and `rules/evdev.xml` is the only part of the installation that can damage
+something the user already had, and on demand it runs only for the people who need it,
+at a moment where the tool can say what it is about to write and why. Everyone else never
+has files appear under `~/.config/xkb` — and `--uninstall` is symmetric: it removes what
+was actually installed.
+
+### The config is embedded, not fetched
+
+The three files total about 3 KB, so the script carries them as string constants rather
+than downloading them when the moment comes.
+
+Fetching on demand would re-open the hole that this whole shape exists to close: the file
+the user inspected would quietly pull content they did not. An embedded SHA-256 per file,
+checked after download, would close it again — but then the script carries the hashes
+*and* a network dependency, where embedding carries neither. On demand sharpens the point:
+the fetch would land while the user sits in the menu having just made their choice, which
+is the worst moment for a captive portal to turn a keyboard setting into an error message.
+Embedded, "on demand" is instant and works offline.
+
+The price is that the config then exists twice, as files under `config/xkb/` and as
+constants in the script, and the two can drift apart. Two cheap guards, and doing both
+settles it:
 
 - when the script finds a `config/xkb/` next to itself — i.e. when it runs from a git
   checkout — it uses those files rather than its constants, so development never goes
   through the copy;
 - CI asserts that the constants and the files are identical, which is a three-line test.
+
+If the config ever outgrows a handful of small files, the escape hatch is to generate the
+constants into the released artifact at build time and keep only the files in the repo.
+Not worth it for three.
+
+### A note on piping
 
 If a pipe is wanted anyway, `curl -fsSL … | python3 - --install` works, with one wrinkle:
 a script read from stdin has no `__file__` to copy from, so `--install` would have to
