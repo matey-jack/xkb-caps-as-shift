@@ -96,17 +96,21 @@ is the worst moment for a captive portal to turn a keyboard setting into an erro
 Embedded, "on demand" is instant and works offline.
 
 The price is that the config then exists twice, as files under `config/xkb/` and as
-constants in the script, and the two can drift apart. Two cheap guards, and doing both
-settles it:
+constants in the script. The files stay the source of truth and the constants are
+generated from them, which makes the duplication mechanical instead of something anyone
+has to maintain by hand:
 
-- when the script finds a `config/xkb/` next to itself — i.e. when it runs from a git
+- a few lines regenerate the embedded block from `config/xkb/`, and CI fails if
+  regenerating changes anything;
+- when the tool finds a `config/xkb/` next to itself — i.e. when it runs from a git
   checkout — it uses those files rather than its constants, so development never goes
-  through the copy;
-- CI asserts that the constants and the files are identical, which is a three-line test.
+  through the copy.
 
-If the config ever outgrows a handful of small files, the escape hatch is to generate the
-constants into the released artifact at build time and keep only the files in the repo.
-Not worth it for three.
+Deleting `config/xkb/` and keeping only the constants would remove the duplication
+outright, but the files earn their place several times over: they are what CI compiles,
+what someone who does not want the tool can copy by hand, what an X11 user would install
+system-wide, and what a patch to xkeyboard-config would consist of. xkb syntax nested in
+a Python string literal is none of those, and it cannot be reviewed in a diff.
 
 ### A note on piping
 

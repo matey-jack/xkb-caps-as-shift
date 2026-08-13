@@ -54,12 +54,14 @@ That third choice has six stock spellings and the scope needs to say which one "
 
 ### Other things the project needs
 
- - an installation script of the pipe-curl-to-bash kind which installs all of the above. It should also check that the required interpreter and libraries are installed. If not installed, offer to do so via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.) It additionally has to:
+ - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step also checks that the required interpreter and libraries are installed. If not installed, offer to do so via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+
+ - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;
    + **merge** rather than overwrite: plenty of people already have a `~/.config/xkb/rules/evdev` and `evdev.xml` of their own, and clobbering those is data loss. Append the option line only if absent, keep exactly one `! include %S/evdev` last, insert the `<option>` into an existing `caps` group. Back up anything it touches, and stop with instructions rather than guessing if it cannot merge confidently;
-   + verify itself afterwards, e.g. `xkbcli compile-keymap --options caps:shift_modifier` must show `Shift_L, Caps_Lock` on `<CAPS>`;
-   + tell the user that GNOME Settings and Tweaks cache the option registry, so a newly installed `evdev.xml` only shows up there after those apps restart (worst case, after logout). The keymap itself applies immediately.
-   + support uninstalling.
+   + verify *before* setting the option: write the config, compile a keymap, check that `<CAPS>` came out as `Shift_L, Caps_Lock`, and only then put `caps:shift_modifier` into the option list. A failed write then cannot leave the user with a selected option that does nothing;
+   + tell the user that Gnome Settings and Tweaks cache the option registry, so a newly written `evdev.xml` only shows up there after those apps restart (worst case, after logout). The keymap itself applies immediately;
+   + be undoable, along with the rest of the installation.
 
  - a ReadMe.md explaining the motivation and how to use it
 
