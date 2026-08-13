@@ -1,4 +1,4 @@
-   
+ 
 Purpose of this project in short: 
  - For ergonomic reasons I recommend using the CapsLock and LSGT keys for Shift and AltGr and I do it in this order, but the reverse also works and is muscle-memory compatible with an ANSI keyboard. (LSGT is also known as  ISO key, 102nd, or Non-US Backslash.)
  - Most of the required mappings are already offered as 'options' in xkb, but they are dispersed in various option groups in Gnome Tweaks. The UI is also inconsistent: the 'caps' group ensures that only one behavior for the CapsLock key can be selected from that group, but other behaviors (such as CapsLock as AltGr) can be selected in other groups.
@@ -14,10 +14,16 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
 This script could be named `xkb-caps-options` and be installed to `~/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
 Other things the project needs:
- - an installation script of the pipe-curl-to-bash kind which installs all of the above.
+ - an installation script of the pipe-curl-to-bash kind which installs all of the above. It should also check that the required interpreter and libraries are installed. If not installed, offer to do so via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.) 
 
  - a ReadMe.md explaining the motivation and how to use it
- 
+
+## technical design
+
+What interpreted languages should be considered for the `xkb-caps-options` script? and which GUI libraries?
+The most important criterion should be that as many typical / popular current Linux already have the interpreter and libs on board or offer them in their package repositories. The GUI doesn't need to be pretty. 
+
+
 names of some of the relevant existing xkb options:
 + 'shift:both_capslock' 
 + 'caps:none' and others in the caps:* group
