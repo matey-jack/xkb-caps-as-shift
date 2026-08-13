@@ -11,7 +11,7 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
    + one exclusive choice for LSGT behavior: as Shift, as AltGr, or whatever is the layout default (usually a character key).
    + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. (This behavior is automatic for the CapsLock key when used as Shift; this option will automatically pre-selected if CapsLock is assigned anything other than the default CapsLock behavior and unselected otherwise. The user can override this preselection.)
 
-This script could be named `xkb-caps-options` and be installed to `~/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
+This script could be named `xkb-caps-options` and be installed to `~/.local/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
 ### Supported environments
 
@@ -63,9 +63,7 @@ That third choice has six stock spellings and the scope needs to say which one "
 
  - a ReadMe.md explaining the motivation and how to use it
 
- - a LICENSE (needed for upstreaming, and for anyone who wants to package this)
-
- - a CI job that compiles the keymap and asserts on the result. It is a dozen lines on `ubuntu-24.04` with `libxkbcommon-tools`, and it catches exactly the class of bug that otherwise only shows up as "my keyboard is weird now".
+ - a CI job that compiles the keymap and asserts on the result, as specified in `tech-specs.md`.
 
 ### Non-goals
 
@@ -75,10 +73,13 @@ That third choice has six stock spellings and the scope needs to say which one "
 
 ## technical design
 
-What interpreted languages should be considered for the `xkb-caps-options` script? and which GUI libraries?
-The most important criterion should be that as many typical / popular current Linux already have the interpreter and libs on board or offer them in their package repositories. The GUI doesn't need to be pretty. 
+The most important criterion is that as many typical / popular current Linux already have the interpreter and libs on board or offer them in their package repositories. The GUI doesn't need to be pretty.
 
-(Options, criteria and an evaluation for this and the other technical decisions are collected in `review.md`; nothing there is decided yet.)
+**First iteration: Python 3 with a command line interface and a terminal UI.** Python 3 is on every Gnome system already, the whole tool fits in a single file that anyone can read before running it, and the standard library covers everything needed — `gsettings` is called as a CLI tool, so there is nothing to import beyond it. The CLI (`--get`, `--set`, `--dry-run`) and the menu share the same code, which also makes the tool testable without driving a UI.
+
+A graphical UI is a later iteration, as a second entry point in the same file: PyGObject is present on Gnome systems, and only then does the .desktop file become useful.
+
+The remaining technical decisions — how the tool is installed, how the options are modelled, and how it is tested — are in `tech-specs.md`.
 
 
 names of some of the relevant existing xkb options, as spelled in xkeyboard-config 2.41 (the Ubuntu 24.04 version):
