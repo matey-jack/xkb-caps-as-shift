@@ -23,69 +23,98 @@ Most of these mappings already exist in xkb. The problem is getting at them:
 - and the one mapping that would be most useful, Caps Lock as a plain Shift, is not in
   stock xkb at all.
 
-This project fills in that missing option, and is growing a small tool to make the
+This project fills in that missing option, and gives you a small tool that makes the
 selection consistent.
 
 ## What you get
 
-`caps:shift_modifier`, a new entry in the standard "Caps Lock behavior" group:
+**`caps:shift_modifier`**, a new entry in the standard "Caps Lock behavior" group:
 
 - **Hold Caps Lock** — it shifts, exactly like a Shift key.
 - **Shift + Caps Lock** — the classic Caps Lock, toggled on and off.
 - **While Caps Lock is on**, pressing Caps Lock switches it back off rather than shifting.
 - The Caps Lock **LED keeps working**.
 - The two real Shift keys are left alone. Pressing both together does *not* toggle Caps
-  Lock unless you also enable the stock option `shift:both_capslock`.
+  Lock unless you ask for it.
+
+**`xkb-caps-options`**, a single-file tool that gives you one exclusive choice per key
+across all the option groups that compete for it, and leaves the rest of your keyboard
+settings alone.
 
 ## Requirements
 
 - **A Wayland session.** The option is installed into your home directory, and only
   libxkbcommon — which is what Wayland compositors use — reads keyboard config from there.
   An X11 session compiles its keymap with the X server's own `xkbcomp`, which never looks
-  in your home directory, so this will not work there.
+  in your home directory, so this will not work there. The tool checks and says so.
 - **Gnome**, for the settings part. The keymap files themselves work under any Wayland
-  compositor; only the "how to select the option" instructions below are Gnome-specific.
+  compositor; only the reading and writing of the option list is Gnome-specific. KDE keeps
+  its list somewhere else and is not supported yet.
+- **Python 3.10 or newer**, which every current Gnome system already has.
 
 ## Installing
 
-There is no installer yet — see [Status](#status). For now, copy the three files by hand:
+Download the tool, read it, run it once:
 
 ```sh
-git clone https://github.com/matey-jack/xkb-caps-as-shift.git
-cd xkb-caps-as-shift
-mkdir -p ~/.config/xkb/rules ~/.config/xkb/symbols
-cp config/xkb/symbols/capslock_shift ~/.config/xkb/symbols/
-cp config/xkb/rules/evdev ~/.config/xkb/rules/
-cp config/xkb/rules/evdev.xml ~/.config/xkb/rules/
+curl -fsSLO https://raw.githubusercontent.com/matey-jack/xkb-caps-as-shift/main/xkb-caps-options
+less xkb-caps-options          # this is the whole product, not a bootstrap
+python3 xkb-caps-options --install
 ```
 
-⚠️ **If `~/.config/xkb/rules/evdev` or `evdev.xml` already exists, do not copy over it.**
-Those files are yours, not the system's, and overwriting them loses whatever you had.
-Merge instead: add the `caps:shift_modifier` line to your `evdev` while keeping exactly
-one `! include %S/evdev` at the end, and add the `<option>` block into the `caps` group of
-your `evdev.xml`.
+That copies it to `~/.local/bin` and makes it executable, so every later run is just
+`xkb-caps-options`. It tells you if `~/.local/bin` is not on your `PATH`. Running
+`--install` again is a no-op that re-checks everything, so it doubles as the update path.
 
-Then select the option, either in the UI or from the command line.
+Nothing is written to `~/.config/xkb` at this point, and for most of what the tool does,
+nothing ever needs to be: every choice except Caps Lock as Shift is a stock xkb option.
+The keymap files are written the first time you actually pick that one, and the tool
+shows you what it is about to write, backs up anything already there, and compiles the
+result to check it before switching the option on.
 
-**Gnome Tweaks** → Keyboard & Mouse → Additional Layout Options → Caps Lock behavior →
-*"Make Caps Lock an additional Shift, but Shift + Caps Lock is the regular Caps Lock"*.
+## Using it
 
-If the entry is not there yet, restart Tweaks — it reads the list of available options
-once at startup. Gnome Settings caches it the same way.
-
-**Or with `gsettings`**, which is worth doing carefully, because the key holds a list and
-setting it replaces the whole thing:
+Run it with no arguments for the menu:
 
 ```sh
-gsettings get org.gnome.desktop.input-sources xkb-options
-gsettings set org.gnome.desktop.input-sources xkb-options "['caps:shift_modifier']"
+xkb-caps-options
 ```
 
-Whatever the first command printed — layout switching, compose key, and so on — belongs in
-the list you set with the second one. Dropping those is the most common way to break
-something while installing this.
+It asks three questions, each with your current setting preselected, and then prints the
+resulting option list with a description for every entry.
 
-The mapping takes effect immediately; no logout needed.
+| question | what it can set |
+|---|---|
+| Caps Lock | unchanged · Shift (`caps:shift_modifier`) · AltGr (`lv3:caps_switch`) · disabled (`caps:none`) |
+| the `LSGT` key | the layout default · Shift (`lv2:lsgt_switch`) · AltGr (`lv3:lsgt_switch`) |
+| both Shifts together toggle Caps Lock | no · yes (`shift:both_capslock_cancel`, so one Shift alone switches it back off) |
+
+If your Caps Lock is currently set to something that is not on that list — `ctrl:nocaps`
+and `caps:escape` are the common ones — it appears as an extra, preselected entry, so
+answering with Enter throughout changes nothing.
+
+The same thing without the menu:
+
+```sh
+xkb-caps-options --get
+xkb-caps-options --set caps=shift,lsgt=altgr,both-shift-caps=yes --dry-run
+xkb-caps-options --set caps=shift,lsgt=altgr,both-shift-caps=yes
+```
+
+Slots are `caps`, `lsgt`, `both-shift-caps`; values are the keys in the table above
+(`default`, `shift`, `altgr`, `none`, `yes`, `no`) plus `keep`. Any slot you do not
+mention keeps its current value, and re-running the same command is a no-op.
+
+### What it will not do
+
+Your option list almost certainly holds entries this project has no opinion about —
+`grp:` for layout switching, `compose:`, `terminate:`, `nbsp:`, `numpad:`. The tool reads
+the list, replaces only the entries belonging to the three questions above, and writes
+the rest back untouched. It never resets the whole list.
+
+The mapping applies immediately; no logout needed. Gnome Settings and Tweaks read the
+list of *available* options once at startup, so a newly written option only appears in
+their menus after those apps restart.
 
 ## Checking that it worked
 
@@ -104,44 +133,50 @@ should print
 	};
 ```
 
-`xkbcli` comes from `libxkbcommon-tools` on Debian and Ubuntu.
+`xkbcli` comes from `libxkbcommon-tools` on Debian and Ubuntu. The tool offers to install
+it, and uses it for exactly this check before switching an option on. If you decline, it
+carries on and says plainly that the setting was written unverified.
 
-## Options that go with it
+## Why a tool at all
 
-All of these are stock xkb, selectable in the same Gnome dialog or the same gsettings
-list:
+The exclusive choice per key is not "the caps group plus one AltGr option" — it is *every*
+option that claims that keycode, and they live in seven different groups. For `<CAPS>`
+that is all 18 `caps:*` options, the three `ctrl:*` ones including the very popular
+`ctrl:nocaps`, `lv3:caps_switch` and its latching variant, `lv5:caps_switch`, six
+`grp:*` layout switchers, and two `compose:*` entries.
 
-| option | effect |
-|---|---|
-| `lv3:lsgt_switch` | the `LSGT` key becomes AltGr |
-| `lv2:lsgt_switch` | the `LSGT` key becomes another Shift |
-| `shift:both_capslock` | the two real Shift keys together toggle Caps Lock |
-| `shift:both_capslock_cancel` | the same, and one Shift alone switches Caps Lock back off |
-
-⚠️ Do not combine `caps:shift_modifier` with another option that also claims the Caps Lock
-key — `lv3:caps_switch`, `grp:caps_toggle` and friends. Nothing stops you, and nothing
-warns you: the other option simply wins, whichever order they appear in. Sorting this out
-is what the tool below is for.
+Only the `caps:*` set is made exclusive by the Gnome Tweaks UI. The rest can be selected
+alongside it, nothing warns you, and the result is decided silently by rule order rather
+than by you: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles
+to `ISO_Level3_Shift` no matter which order they appear in. Sorting that out is what the
+tool is for.
 
 ## Uninstalling
 
-Remove the option from the list, and delete the files if you want them gone:
-
 ```sh
-gsettings reset org.gnome.desktop.input-sources xkb-options
-rm ~/.config/xkb/symbols/capslock_shift
+xkb-caps-options --uninstall
 ```
 
-`~/.config/xkb/rules/evdev` and `evdev.xml` can go too, unless you have put anything else
-of your own in them.
+removes the options it manages from your list — leaving everything else in place — takes
+its lines back out of `~/.config/xkb/rules/evdev` and `evdev.xml`, deletes
+`~/.config/xkb/symbols/capslock_shift`, and finally removes itself from `~/.local/bin`.
+Files it touches are backed up first, and any file that turned out to hold something of
+yours is left alone with a note saying so.
 
-## Status
+## Development
 
-The xkb option works and is what the instructions above install.
+`config/xkb/` mirrors `$XDG_CONFIG_HOME/xkb/` and is the source of truth for the three
+keymap files; the tool carries a copy of them as string constants and uses the files
+directly when it runs from a checkout. `./xkb-caps-options --regen-embedded` refreshes
+that copy, and CI fails if it has drifted.
 
-The selector tool — one exclusive choice per key, across all the groups that compete for
-it, with your unrelated settings left alone — is specified but not written yet. See
-[`scope.md`](scope.md) for what it should do and [`tech-specs.md`](tech-specs.md) for how.
+```sh
+python3 -m unittest discover -s tests -v   # the tool
+./tests/check-keymaps.sh                   # the keymaps, needs xkbcli and xkbcomp
+```
+
+[`scope.md`](scope.md) says what the project is for and where its boundaries are;
+[`tech-specs.md`](tech-specs.md) covers how the tool is installed, modelled, and tested.
 
 ## License
 

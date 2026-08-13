@@ -9,9 +9,9 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
  - provides a small terminal UI (or graphical UI, if we can keep installation size small and ideally only deliver an inspectable script, not a compiled binary) for selecting options consistently:
    + one exclusive choice for CapsLock behavior: disabled (`caps:none`), as Shift, as AltGr, or as CapsLock (no option set, because this is the default).
    + one exclusive choice for LSGT behavior: as Shift, as AltGr, or whatever is the layout default (usually a character key).
-   + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. (This behavior is automatic for the CapsLock key when used as Shift; this option will automatically pre-selected if CapsLock is assigned anything other than the default CapsLock behavior and unselected otherwise. The user can override this preselection.)
+   + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. (This behavior is automatic for the CapsLock key when used as Shift.) It is recommended whenever CapsLock is assigned something other than its default behavior, and the menu says so — but the preselection is always the value that is actually set, never a recommendation. Preselecting a value the user does not have would break the rule that re-running is a no-op, and would make `--set` and the menu disagree about the same state.
 
-This script could be named `xkb-caps-options` and be installed to `~/.local/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
+The script is named `xkb-caps-options` and is installed to `~/.local/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
 ### Supported environments
 
@@ -24,7 +24,7 @@ This script could be named `xkb-caps-options` and be installed to `~/.local/bin`
 ### Requirements the UI has to meet
 
  - **Never lose settings it does not manage.** The GNOME key `org.gnome.desktop.input-sources xkb-options` (and its equivalent elsewhere) routinely already holds entries this project has no opinion about: `grp:*` for layout switching, `compose:*`, `terminate:*`, `nbsp:*`, `numpad:*`. The tool must read the current list, replace only the entries belonging to the choices above, and write the rest back untouched.
- - **Never silently discard a CapsLock behavior the user already picked.** Esc and Ctrl are by far the most popular CapsLock remappings, and neither is in the four-way choice above. If the current setting is outside the offered list, show it as the selected value rather than dropping it — otherwise the tool damages exactly the users it is meant to help. (Open question: offer the whole exclusive set of ~17 behaviors with the four recommended ones marked, or keep the short list plus a "keep current setting" entry?)
+ - **Never silently discard a CapsLock behavior the user already picked.** Esc and Ctrl are by far the most popular CapsLock remappings, and neither is in the four-way choice above. If the current setting is outside the offered list, show it as the selected value rather than dropping it — otherwise the tool damages exactly the users it is meant to help. Decided: the short list plus a "keep `<current>`" entry, labelled with that option's own description from the xkb registry. Offering all ~30 competing behaviors would turn the menu into a worse copy of Gnome Tweaks, which is a non-goal below.
  - **Show what is set now, and what changed.** Print the resulting option list with a one-line description each. It makes the tool self-documenting and makes bug reports usable.
  - **Be idempotent and reversible.** Re-running must be a no-op; there must be a way back to the default.
  - **Offer a non-interactive mode** (`--get`, `--set`, `--dry-run`) next to the menu. It costs almost nothing, makes the tool usable from dotfiles, and is what makes it testable without driving a UI.
@@ -33,7 +33,7 @@ This script could be named `xkb-caps-options` and be installed to `~/.local/bin`
 
 The exclusive choice per key is not just "the caps group plus one AltGr option" — it is *every* option that claims that keycode, across four different groups:
 
- - `<CAPS>`: all 17 `caps:*` options (16 stock plus ours), `lv3:caps_switch`, `lv3:caps_switch_latch`, `grp:caps_toggle`, `grp:caps_switch`, `grp:caps_select`, `grp:shift_caps_toggle`, `grp:alt_caps_toggle`.
+ - `<CAPS>`: all 18 `caps:*` options (17 stock plus ours), `ctrl:nocaps`, `ctrl:swapcaps`, `ctrl:hyper_capscontrol`, `lv3:caps_switch`, `lv3:caps_switch_latch`, `lv5:caps_switch`, `grp:caps_toggle`, `grp:caps_switch`, `grp:caps_select`, `grp:shift_caps_toggle`, `grp:shift_caps_switch`, `grp:alt_caps_toggle`, `compose:caps`, `compose:caps-altgr`. That is seven groups, not four. `ctrl:nocaps` matters most of all: "CapsLock as Ctrl" is the single most common remapping of this key, and it is not in the `caps:*` group at all. `grp_led:caps` is deliberately not on the list — it claims the LED rather than the key, and works alongside every choice.
  - `<LSGT>`: `lv2:lsgt_switch`, `lv3:lsgt_switch`, `lv3:lsgt_switch_latch`, `lv5:lsgt_switch`, `lv5:lsgt_switch_lock`, `lv5:lsgt_switch_lock_cancel`.
 
 Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be selected alongside it, and the result is decided silently by rule order rather than by the user. Verified: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles to `ISO_Level3_Shift` — `lv3` wins no matter which order the two appear in.
@@ -42,15 +42,15 @@ Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be 
 
 Spelled out in the README, and it has to be spelled out in the UI's own description too, because most of it is surprising until seen — above all that Shift + CapsLock still gives the classic Caps Lock, and that two real Shift keys do *not*.
 
-That last part is a separate choice with six stock spellings, and the scope needs to say which one "yes" writes: `shift:both_capslock`, `shift:both_capslock_cancel`, and the `lshift_`/`rshift_` variant of each. The `_cancel` ones additionally switch Caps Lock *off* when one Shift is pressed alone, which fits this project's ergonomics better — with CapsLock used as a Shift you will hit a Shift key far more often than you want Caps Lock.
+That last part is a separate choice with six stock spellings: `shift:both_capslock`, `shift:both_capslock_cancel`, and the `lshift_`/`rshift_` variant of each. "Yes" writes **`shift:both_capslock_cancel`**, because the `_cancel` ones additionally switch Caps Lock *off* when one Shift is pressed alone, which fits this project's ergonomics better — with CapsLock used as a Shift you will hit a Shift key far more often than you want Caps Lock. All six are recognised on the way in, so an existing setting is read correctly and replaced rather than duplicated.
 
 ### Scope questions still open
 
- - **Is upstreaming `caps:shift_modifier` to xkeyboard-config a goal?** It is a small patch (a symbols section, a rules line, an entry in `base.xml.in`) and the implementation is already an exact copy of an idiom upstream uses elsewhere. If it lands, the whole install-and-merge machinery becomes unnecessary for future distro releases and this project shrinks to the selector tool. It would need a LICENSE on this repo.
+ - **Is upstreaming `caps:shift_modifier` to xkeyboard-config a goal?** It is a small patch (a symbols section, a rules line, an entry in `base.xml.in`) and the implementation is already an exact copy of an idiom upstream uses elsewhere. If it lands, the whole install-and-merge machinery becomes unnecessary for future distro releases and this project shrinks to the selector tool.
 
 ### Other things the project needs
 
- - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step also checks the dependencies listed in `tech-specs.md`. If one is missing, offer to install it via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+ - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
 
  - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;
@@ -62,6 +62,8 @@ That last part is a separate choice with six stock spellings, and the scope need
  - a ReadMe.md explaining the motivation and how to use it
 
  - a CI job that compiles the keymap and asserts on the result, as specified in `tech-specs.md`.
+
+All four are done. What remains open is the graphical UI, KDE support, and the upstreaming question above.
 
 ### Non-goals
 
@@ -82,7 +84,7 @@ The remaining technical decisions — how the tool is installed, how the options
 
 names of some of the relevant existing xkb options, as spelled in xkeyboard-config 2.41 (the Ubuntu 24.04 version):
 + 'shift:both_capslock' and its five siblings
-+ 'caps:none' and the other 15 options in the caps:* group
++ 'caps:none' and the other 16 options in the caps:* group. Note that `rules/evdev` has one more than the Gnome UI shows: `caps:escape_shifted_compose` has no entry in `rules/evdev.xml`, so it can be set through gsettings while being invisible in Tweaks.
 + 'lv3:caps_switch', which is also exclusive with all the caps:* settings, but this is not enforced by the existing Gnome Tweaks UI. (Note the spelling: the group is 'lv3', not 'lvl3', and every one of these options carries a '_switch' suffix.)
 + 'lv3:lsgt_switch' and 'lv2:lsgt_switch' which are also mutually exclusive.
 

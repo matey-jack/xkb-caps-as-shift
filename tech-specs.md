@@ -5,11 +5,12 @@ the tool is installed, how it models the options, and how it is tested.
 
 ## Installation and distribution
 
-The tool ships as a single Python file. What is still open is the *shape* of the
-installation: a separate installer script that fetches and places everything, or one
-self-installing file that does it itself. The duties either shape has to fulfil — honour
-`XDG_CONFIG_HOME`, merge instead of overwrite, back up, verify, support uninstalling —
-are listed in `scope.md`; the question here is only which shape carries them better.
+The tool ships as a single Python file. The question this section settles is the *shape*
+of the installation: a separate installer script that fetches and places everything, or
+one self-installing file that does it itself. The duties either shape has to fulfil —
+honour `XDG_CONFIG_HOME`, merge instead of overwrite, back up, verify, support
+uninstalling — are listed in `scope.md`; the question here is only which shape carries
+them better. Shape B won, and is what is built.
 
 ### Shape A — separate install script
 
@@ -41,10 +42,18 @@ bit. It is needed exactly once: `--install` copies the script to `~/.local/bin` 
 0755, so every later run is just `xkb-caps-options`, which is what the `#!/usr/bin/env
 python3` shebang is there for.
 
-`--install` runs the same steps as above, minus the fetching, and minus the xkb config —
-see below. When everything is already in place it is a no-op that re-verifies, so it
-doubles as the update and repair path. Running the tool without arguments goes straight to
-the menu, and `--uninstall` undoes everything from the same file.
+`--install` runs steps 1, 4, 5 and 7 of that list. Fetching is gone, and so are the two
+steps that belong to the xkb config: writing it (see below) and verifying it, which
+cannot run before it has been written. When everything is already in place it is a no-op
+that re-checks, so it doubles as the update and repair path. Running the tool without
+arguments goes straight to the menu, and `--uninstall` undoes everything from the same
+file.
+
+Undoing is surgical rather than a restore from backup: by the time someone uninstalls,
+the backups can be months old and the files may have been edited since, so putting one
+back would itself be data loss. `--uninstall` removes exactly the lines the tool added,
+deletes a file only when nothing but those lines was left in it, and says so plainly when
+it finds a shape it did not write.
 
 ### Which is better for the user
 
@@ -100,8 +109,10 @@ constants in the script. The files stay the source of truth and the constants ar
 generated from them, which makes the duplication mechanical instead of something anyone
 has to maintain by hand:
 
-- a few lines regenerate the embedded block from `config/xkb/`, and CI fails if
-  regenerating changes anything;
+- `--regen-embedded` rewrites the block between two markers in the script's own source
+  from `config/xkb/`, and `--check-embedded` fails if the two have drifted, which is what
+  CI runs. Both are hidden from `--help`: they are development commands, and the file a
+  user downloads has no `config/xkb/` next to it for them to work on;
 - when the tool finds a `config/xkb/` next to itself — i.e. when it runs from a git
   checkout — it uses those files rather than its constants, so development never goes
   through the copy.
@@ -138,8 +149,10 @@ embedded, so there is no download at runtime either.
 | `xkbcli` | verifying the compiled keymap | often not | `libxkbcommon-tools` |
 
 **`python3`** is a prerequisite, not a dependency the tool can resolve — see `scope.md`.
-Target the version floor at what the oldest still-supported Gnome distribution ships, and
-check it at startup rather than crashing on a syntax error in an old interpreter.
+The floor is **3.10**, what Ubuntu 22.04 LTS ships and below anything newer still in
+support. It is checked in a prelude before the other imports, and the whole file is
+written in syntax an older interpreter can still parse, because a `SyntaxError` happens
+at parse time and would beat any check to it.
 
 **`gsettings`** comes with glib. If it is genuinely missing, the machine is not running
 Gnome, which the tool has already detected by then, so this is a check that should never
@@ -168,8 +181,13 @@ those sets are listed in `scope.md`, and they span four different option groups:
 ```
 slot "caps"            → every option that claims <CAPS>
 slot "lsgt"            → every option that claims <LSGT>
-slot "both_shift_caps" → shift:both_capslock | shift:both_capslock_cancel | unset
+slot "both-shift-caps" → all six shift:*_both_capslock spellings
 ```
+
+A slot carries two lists: everything it *claims*, which is what gets cleared when the
+slot is written, and the shorter list of *choices* it offers. The two differ on purpose —
+an option that is claimed but not offered is one this project does not recommend and must
+still never drop, which is what produces the "keep `<current>`" entry from `scope.md`.
 
 The whole algorithm is then: read the current option list, bucket each entry into a slot
 or into "not ours", show one choice per slot with the current value preselected, and write
@@ -180,12 +198,25 @@ That single rule delivers conflict-freedom, preservation of unrelated options, a
 as literal data at the top of the file, so they are easy to audit and easy to extend when
 xkeyboard-config adds an option.
 
+The non-interactive interface is the same model spelled out: `--set caps=shift,lsgt=altgr`
+takes `slot=value` pairs where the values are the choice names (`default`, `shift`,
+`altgr`, `none`, `yes`, `no`) plus `keep`. A slot nobody mentions keeps what it has, which
+is what makes the command idempotent and safe in a dotfile.
+
+Descriptions are not embedded. The tool reads them out of the xkb registry the desktop
+itself uses — `$XDG_CONFIG_HOME/xkb/rules/evdev.xml`, then `/etc/xkb`, then
+`/usr/share/X11/xkb` — so every option prints with its real one-line description,
+including the ones this project has never heard of, and a table of ~120 strings does not
+have to be maintained against xkeyboard-config releases.
+
 ## Verification and testing
 
-A Github Actions job on `ubuntu-24.04` that installs `libxkbcommon-tools`, points
-`XDG_CONFIG_HOME` at the repo's `config/`, and asserts on compiled keymaps. It is a dozen
-lines and it catches the class of bug that otherwise only surfaces as "my keyboard is
-weird now":
+A Github Actions job on `ubuntu-24.04` that installs `libxkbcommon-tools` and
+`x11-xkb-utils`, points `XDG_CONFIG_HOME` at the repo's `config/`, and asserts on
+compiled keymaps. The assertions live in `tests/check-keymaps.sh` and
+`tests/test_xkb_caps_options.py` rather than in the workflow file, so they can be run
+by hand on the machine where something is actually broken. Together they catch the class
+of bug that otherwise only surfaces as "my keyboard is weird now":
 
 - `xkbcli compile-keymap --layout us --options caps:shift_modifier` gives
   `symbols[Group1]= [ Shift_L, Caps_Lock ]` for `<CAPS>`;
@@ -194,6 +225,15 @@ weird now":
   option has been shadowed;
 - the same two checks through `xkbcomp -I`, which is stricter than libxkbcommon about
   include-path shadowing and will fail where libxkbcommon quietly recovers;
-- once the tool exists: `--dry-run` assertions over a set of starting option lists, above
-  all "unrelated options survive" and "an existing caps option is not silently dropped";
+- assertions over a set of starting option lists, above all "unrelated options survive"
+  and "an existing caps option is not silently dropped". These drive the real script with
+  a fake `gsettings` on `PATH` and `XDG_CONFIG_HOME` in a temporary directory, so the
+  parsing, the merge and the write are all exercised without a desktop session;
+- the merges into a `rules/evdev` and `rules/evdev.xml` the user already had, which is the
+  only part of this tool that can destroy something: comments and DOCTYPE survive, the
+  result is still valid XML, running twice changes nothing, and `--uninstall` returns the
+  file to exactly what it was;
+- that every option id in the slot tables is a real one, by checking it against the
+  installed `rules/evdev` — the tables are hand-maintained, and a typo in them would
+  silently stop clearing a conflicting option;
 - and the check that the embedded config matches `config/xkb/`.
