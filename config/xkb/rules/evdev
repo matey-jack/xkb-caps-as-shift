@@ -1,0 +1,12 @@
+
+// On the left side of this rule the 'caps:' prefix is a UI grouping convention, 
+// not a file name.
+//
+// The right side 'capslock' is the files name in the ../symbols folder'
+// and 'shift_modifier' is the section in that file.
+! option = symbols
+caps:shift_modifier = +capslock(shift_modifier)
+
+// Since the rules reader stops searching file paths at the first one found, 
+// we explicitly need to import the system rules.
+! include %S/evdev

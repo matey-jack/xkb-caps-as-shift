@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xkbConfigRegistry SYSTEM "xkb.dtd">
+<!--
+  Registration file for GNOME's UI.  It is read by libxkbregistry, which merges
+  ~/.config/xkb/rules/evdev.xml with /etc/xkb/ and /usr/share/X11/xkb/ instead of
+  replacing them, so only the additions belong here.  
+-->
+<xkbConfigRegistry version="1.1">
+
+  <!--
+    Option groups merge the same way variant lists do, so this adds a 17th entry
+    to the stock 'caps' group rather than creating a group of its own.  
+    
+    The stock 'caps' group is set as allowMultipleSelection="false", which makes
+    perfect sense since using CapsLock as Shift is exclusive to the other options from that group
+    (using CapsLock as Escape, Ctrl, disabling it, etc).
+
+    The name is 'shift_modifier' and not the obvious 'shift' because caps:shift
+    is already taken upstream: it means "Caps Lock acts as Shift *with locking*"
+    and is a types rule (+caps(shift)).  caps:shift_modifier is the exact analog
+    of the stock caps:ctrl_modifier, "Make Caps Lock an additional Ctrl".
+  -->
+  <optionList>
+    <group allowMultipleSelection="false">
+      <configItem>
+        <name>caps</name>
+      </configItem>
+      <option>
+        <configItem>
+          <name>caps:shift_modifier</name>
+          <description>Make Caps Lock an additional Shift; any two Shift keys toggle Caps Lock</description>
+        </configItem>
+      </option>
+    </group>
+  </optionList>
+
+</xkbConfigRegistry>
