@@ -6,30 +6,14 @@
 // name matches the option's suffix by convention only; ../rules/evdev is what
 // actually ties the two together.
 //
-// The file must NOT be named 'capslock', even though that is the stock file
-// holding the other 13 caps:* options.  Symbols files are located by searching
-// the include path and the first file of that name wins, so a user file called
-// 'capslock' shadows the stock one instead of extending it, and every other
-// caps:* option then fails to resolve:
-//     Error: No Symbols named "escape" in the include file "capslock"
-// libxkbcommon happens to retry the next include path and survive that, but
-// xkbcomp does not, and the fallback is an implementation detail rather than a
-// documented guarantee.  ../rules/evdev.xml is the one file here that really is
-// merged rather than shadowed, because libxkbregistry merges by design.
+// The file name has to be unique across the xkb include path: symbols files are
+// located by search and the first match wins, so a file named like a stock one
+// hides that one instead of adding to it.
 //
-// The mapping itself is the same construct the stock shift(lshift_both_capslock)
-// uses for <LFSH>, only applied to <CAPS>.  The standard compat rules turn it
-// into: level 1 Shift_L -> SetMods(Shift), level 2 Caps_Lock -> LockMods(Lock).
-// Three consequences worth knowing:
-//  - while Caps Lock is on, <CAPS> sits at level 2, so pressing it releases the
-//    lock instead of acting as Shift.
-//  - symbols/pc binds the Caps_Lock keysym to the Lock modifier, so <CAPS> ends
-//    up in modifier_map Lock as well as Shift.  That is wanted, not a leak: it
-//    keeps the Caps Lock LED working, and the stock caps:escape_shifted_capslock
-//    has exactly the same property.
-//  - the modifier_map below is therefore redundant (symbols/pc already binds
-//    Shift_L to Shift).  It is kept to state the intent explicitly, the way
-//    capslock(super) and capslock(hyper) do.
+// The mapping is the same construct stock shift(lshift_both_capslock) uses for
+// <LFSH>: the standard compat rules turn level 1 into SetMods(Shift) and level 2
+// into LockMods(Lock).  <CAPS> also stays in modifier_map Lock, through the
+// Caps_Lock keysym bound in symbols/pc, and that is what keeps the LED working.
 hidden partial modifier_keys
 xkb_symbols "shift_modifier" {
     key <CAPS> { [  Shift_L,  Caps_Lock  ], type[group1]="ALPHABETIC" };

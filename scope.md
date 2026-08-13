@@ -13,6 +13,12 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
 
 This script could be named `xkb-caps-options` and be installed to `~/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
+### Supported environments
+
+**Wayland only.** `~/.config/xkb/` is a libxkbcommon feature, so a Wayland compositor reads it, while an X11 session compiles its keymap with the X server's own `xkbcomp`, whose include path is `/usr/share/X11/xkb` and which never looks in the home directory. Supporting X11 would mean a system-wide install needing root, and that is out of scope. The tool should detect an X11 session and say so plainly instead of offering a choice that cannot take effect.
+
+**Gnome only, for now.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`. KDE keeps its own list in `kxkbrc` and may be added later, so reading and writing the option list should sit behind a small interface rather than being spread through the code.
+
 ### Requirements the UI has to meet
 
  - **Never lose settings it does not manage.** The GNOME key `org.gnome.desktop.input-sources xkb-options` (and its equivalent elsewhere) routinely already holds entries this project has no opinion about: `grp:*` for layout switching, `compose:*`, `terminate:*`, `nbsp:*`, `numpad:*`. The tool must read the current list, replace only the entries belonging to the choices above, and write the rest back untouched.
@@ -44,8 +50,6 @@ That third choice has six stock spellings and the scope needs to say which one "
 
 ### Scope questions still open
 
- - **Which sessions do we support?** `~/.config/xkb/` is a libxkbcommon feature, so a Wayland session (mutter, KWin, sway) picks it up, while the X server compiles its keymap with its own `xkbcomp`, whose include path is `/usr/share/X11/xkb` only. On GNOME *X11* the new option therefore cannot load from the home directory at all, and the tool would be offering a choice that does nothing. Either declare Wayland-only for v1 and detect-and-explain on X11, or add a system-wide install path that needs root. This has to be settled before the installer is written.
- - **Which desktops?** GNOME stores the options in gsettings, KDE in `kxkbrc`, and `localectl` is a third, system-wide place. GNOME first is the obvious start; the question is whether the others are non-goals or just later.
  - **Is upstreaming `caps:shift_modifier` to xkeyboard-config a goal?** It is a small patch (a symbols section, a rules line, an entry in `base.xml.in`) and the implementation is already an exact copy of an idiom upstream uses elsewhere. If it lands, the whole install-and-merge machinery becomes unnecessary for future distro releases and this project shrinks to the selector tool. It would need a LICENSE on this repo.
 
 ### Other things the project needs
