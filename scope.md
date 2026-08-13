@@ -40,15 +40,9 @@ Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be 
 
 ### What `caps:shift_modifier` actually does
 
-Worth stating exactly, both in the README and in the UI's own description, because two thirds of it is surprising until seen:
+Spelled out in the README, and it has to be spelled out in the UI's own description too, because most of it is surprising until seen — above all that Shift + CapsLock still gives the classic Caps Lock, and that two real Shift keys do *not*.
 
- - Tap or hold CapsLock: momentary Shift.
- - Shift + CapsLock: toggles the real Caps Lock.
- - While Caps Lock is on, pressing CapsLock releases the lock instead of acting as Shift.
- - The Caps Lock LED keeps working.
- - It does *not* by itself make the two real Shift keys toggle Caps Lock — that is the separate `shift:both_capslock` family, i.e. the third choice in the UI above.
-
-That third choice has six stock spellings and the scope needs to say which one "yes" writes: `shift:both_capslock`, `shift:both_capslock_cancel`, and the `lshift_`/`rshift_` variant of each. The `_cancel` ones additionally switch Caps Lock *off* when one Shift is pressed alone, which fits this project's ergonomics better — with CapsLock used as a Shift you will hit a Shift key far more often than you want Caps Lock.
+That last part is a separate choice with six stock spellings, and the scope needs to say which one "yes" writes: `shift:both_capslock`, `shift:both_capslock_cancel`, and the `lshift_`/`rshift_` variant of each. The `_cancel` ones additionally switch Caps Lock *off* when one Shift is pressed alone, which fits this project's ergonomics better — with CapsLock used as a Shift you will hit a Shift key far more often than you want Caps Lock.
 
 ### Scope questions still open
 
