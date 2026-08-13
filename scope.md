@@ -19,6 +19,8 @@ This script could be named `xkb-caps-options` and be installed to `~/.local/bin`
 
 **Gnome only, for now.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`. KDE keeps its own list in `kxkbrc` and may be added later, so reading and writing the option list should sit behind a small interface rather than being spread through the code.
 
+**Python 3 has to be there already.** It is a prerequisite rather than something the tool can install, since installing is itself the tool's job and it is written in Python. Every Gnome system has it. The remaining dependencies are listed in `tech-specs.md`.
+
 ### Requirements the UI has to meet
 
  - **Never lose settings it does not manage.** The GNOME key `org.gnome.desktop.input-sources xkb-options` (and its equivalent elsewhere) routinely already holds entries this project has no opinion about: `grp:*` for layout switching, `compose:*`, `terminate:*`, `nbsp:*`, `numpad:*`. The tool must read the current list, replace only the entries belonging to the choices above, and write the rest back untouched.
@@ -54,7 +56,7 @@ That third choice has six stock spellings and the scope needs to say which one "
 
 ### Other things the project needs
 
- - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step also checks that the required interpreter and libraries are installed. If not installed, offer to do so via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+ - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step also checks the dependencies listed in `tech-specs.md`. If one is missing, offer to install it via the distributions standard package manager or other appropriated mechanism. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
 
  - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;

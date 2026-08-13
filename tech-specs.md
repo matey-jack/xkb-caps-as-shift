@@ -125,6 +125,40 @@ better too: a package installs the single file and the config directly, and `--i
 simply never runs. Flatpak is a poor fit either way, since the whole job is writing into
 `~/.config/xkb`.
 
+## Dependencies
+
+Short list, and two of the three are already on any machine that can run the tool at all.
+Nothing comes from PyPI: the standard library covers everything, and the config is
+embedded, so there is no download at runtime either.
+
+| dependency | needed for | typically present | Debian/Ubuntu package |
+|---|---|---|---|
+| `python3` | everything | always, on Gnome | `python3` |
+| `gsettings` | reading and writing the option list | always, on Gnome | `libglib2.0-bin` |
+| `xkbcli` | verifying the compiled keymap | often not | `libxkbcommon-tools` |
+
+**`python3`** is a prerequisite, not a dependency the tool can resolve — see `scope.md`.
+Target the version floor at what the oldest still-supported Gnome distribution ships, and
+check it at startup rather than crashing on a syntax error in an old interpreter.
+
+**`gsettings`** comes with glib. If it is genuinely missing, the machine is not running
+Gnome, which the tool has already detected by then, so this is a check that should never
+fire in practice.
+
+**`xkbcli`** is the only one likely to be missing, because it lives in a tools package
+that a desktop install does not pull in — libxkbcommon itself is always there, since the
+compositor links against it. It is needed only for the verification step before an option
+is set. So: offer to install it, and if the user declines, carry on and say plainly that
+the setting is being written unverified. Refusing to work without it would be out of
+proportion to what it does.
+
+On other distributions the split differs — `xkbcli` may sit in the main libxkbcommon
+package rather than a separate one — so the package name has to be looked up per
+distribution family rather than assumed to be `libxkbcommon-tools` everywhere.
+
+A graphical UI would add PyGObject (`python3-gi`) and GTK, but that is a later iteration
+and does not belong in the first install.
+
 ## The core data model
 
 Model the domain as **slots**, not as individual options. A slot is one exclusive choice
