@@ -11,7 +11,7 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
  - provides a small terminal UI (or graphical UI, if we can keep installation size small and ideally only deliver an inspectable script, not a compiled binary) for selecting options consistently:
    + one exclusive choice for CapsLock behavior: disabled (`caps:none`), as Shift, as AltGr, or as CapsLock (no option set, because this is the default).
    + one exclusive choice for LSGT behavior: as Shift, as AltGr, or whatever is the layout default (usually a character key).
-   + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. (This behavior is automatic for the CapsLock key when used as Shift.) It is recommended whenever CapsLock is assigned something other than its default behavior, and the menu says so — but the preselection is always the value that is actually set, never a recommendation. Preselecting a value the user does not have would break the rule that re-running is a no-op, and would make `--set` and the menu disagree about the same state.
+   + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. 
 
 The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bin` as `xkb-caps-options`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
