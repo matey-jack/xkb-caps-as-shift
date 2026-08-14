@@ -148,20 +148,6 @@ should print
 it, and uses it for exactly this check before switching an option on. If you decline, it
 carries on and says plainly that the setting was written unverified.
 
-## Why a tool at all
-
-The exclusive choice per key is not "the caps group plus one AltGr option" — it is *every*
-option that claims that keycode, and they live in seven different groups. For `<CAPS>`
-that is all 18 `caps:*` options, the three `ctrl:*` ones including the very popular
-`ctrl:nocaps`, `lv3:caps_switch` and its latching variant, `lv5:caps_switch`, six
-`grp:*` layout switchers, and two `compose:*` entries.
-
-Only the `caps:*` set is made exclusive by the Gnome Tweaks UI. The rest can be selected
-alongside it, nothing warns you, and the result is decided silently by rule order rather
-than by you: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles
-to `ISO_Level3_Shift` no matter which order they appear in. Sorting that out is what the
-tool is for.
-
 ## Uninstalling
 
 ```sh
