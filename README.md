@@ -17,8 +17,9 @@ Therefor I put it in the best position.
 But you can also virtually restore the ANSI left Shift key and use CapsLock as AltGr:
 ![iso_caps_as_algr.png](docs/iso_caps_as_algr.png)
 
-In all cases, the existing CapsLock functionality can be reached by pressing two shift keys together for locking Caps mode 
-and pressing any Shift key to end the lock mode.
+In all cases, the existing CapsLock functionality can be made available, if desired. 
+When choosing so, you can press two shift keys together for locking Caps mode 
+and press any Shift key to end the lock mode.
 
 ## Why is this tool needed?
 
