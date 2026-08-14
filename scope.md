@@ -13,7 +13,7 @@ How this project makes configuring the CapsLock and LSGT behavior easier:
    + one exclusive choice for LSGT behavior: as Shift, as AltGr, or whatever is the layout default (usually a character key).
    + one yes/no choice if other Shift keys should also act as CapsLock on their Shift layer. (This behavior is automatic for the CapsLock key when used as Shift.) It is recommended whenever CapsLock is assigned something other than its default behavior, and the menu says so — but the preselection is always the value that is actually set, never a recommendation. Preselecting a value the user does not have would break the rule that re-running is a no-op, and would make `--set` and the menu disagree about the same state.
 
-The script is named `xkb-caps-options` and is installed to `~/.local/bin`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
+The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bin` as `xkb-caps-options`. If it's a GUI, a .desktop file for it should also be created in the right place in the user's home dir.
 
 ### Supported environments
 
@@ -57,7 +57,7 @@ So anyone wanting to improve their keyboard experience, better drop a small snip
 
 ### Other things the project needs
 
- - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+ - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options.py --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
 
  - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;

@@ -4,9 +4,9 @@
 This is the whole product: a single file, standard library only, no network
 access at runtime.  Read it before you run it.
 
-    python3 xkb-caps-options --install    put it in ~/.local/bin
-    xkb-caps-options                      the menu
-    xkb-caps-options --help               everything else
+    python3 xkb-caps-options.py --install    put it in ~/.local/bin
+    xkb-caps-options                         the menu
+    xkb-caps-options --help                  everything else
 """
 
 import sys
@@ -840,8 +840,8 @@ def install_self() -> int:
             "This copy was read from stdin, so it has no file to install from.\n"
             "Download it first:\n"
             "  curl -fsSLO https://raw.githubusercontent.com/matey-jack/"
-            "xkb-caps-as-shift/main/xkb-caps-options\n"
-            "  python3 xkb-caps-options --install"
+            "xkb-caps-as-shift/main/xkb-caps-options.py\n"
+            "  python3 xkb-caps-options.py --install"
         )
     for warning in check_session(strict=False):
         print("Note: %s" % warning)
@@ -1143,7 +1143,7 @@ def check_embedded() -> int:
     if drifted:
         sys.stderr.write(
             "The embedded config no longer matches config/xkb/: %s\n"
-            "Run './xkb-caps-options --regen-embedded' and commit the result.\n"
+            "Run 'python3 xkb-caps-options.py --regen-embedded' and commit the result.\n"
             % ", ".join(drifted)
         )
         return 1

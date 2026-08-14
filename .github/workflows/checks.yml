@@ -23,4 +23,4 @@ jobs:
         run: python3 -m unittest discover -s tests -v
 
       - name: Check that the embedded config still matches config/xkb/
-        run: ./xkb-caps-options --check-embedded
+        run: python3 xkb-caps-options.py --check-embedded

@@ -69,13 +69,14 @@ Download the tool, read it, run it once:
 
 ```sh
 curl -fsSLO https://raw.githubusercontent.com/matey-jack/xkb-caps-as-shift/main/xkb-caps-options.py
-less xkb-caps-options          # this is the whole product, not a bootstrap
+less xkb-caps-options.py       # this is the whole product, not a bootstrap
 python3 xkb-caps-options.py --install
 ```
 
-That copies it to `~/.local/bin` and makes it executable, so every later run is just
-`xkb-caps-options`. It tells you if `~/.local/bin` is not on your `PATH`. Running
-`--install` again is a no-op that re-checks everything, so it doubles as the update path.
+That copies it to `~/.local/bin` and makes it executable — without the extension — so
+every later run is just `xkb-caps-options`. It tells you if `~/.local/bin` is not on your
+`PATH`. Running `--install` again is a no-op that re-checks everything, so it doubles as
+the update path.
 
 Nothing is written to `~/.config/xkb` at this point, and for most of what the tool does,
 nothing ever needs to be: every choice except Caps Lock as Shift is a stock xkb option.
@@ -164,7 +165,7 @@ yours is left alone with a note saying so.
 
 `config/xkb/` mirrors `$XDG_CONFIG_HOME/xkb/` and is the source of truth for the three
 keymap files; the tool carries a copy of them as string constants and uses the files
-directly when it runs from a checkout. `./xkb-caps-options --regen-embedded` refreshes
+directly when it runs from a checkout. `python3 xkb-caps-options.py --regen-embedded` refreshes
 that copy, and CI fails if it has drifted.
 
 ```sh

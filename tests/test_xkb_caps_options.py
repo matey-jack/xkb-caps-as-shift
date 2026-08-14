@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ElementTree
 from importlib.machinery import SourceFileLoader
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPT = os.path.join(REPO, "xkb-caps-options")
+SCRIPT = os.path.join(REPO, "xkb-caps-options.py")
 
 
 def load_module():
