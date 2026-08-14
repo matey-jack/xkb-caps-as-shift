@@ -503,30 +503,32 @@ def compose(untouched: Sequence[str], selection: Dict[str, Optional[str]]) -> Li
     return result
 
 
-def keep_choice(state: SlotState) -> Optional[Choice]:
-    """The 'leave what is already there' entry, when it is not on the menu.
+def keep_choices(state: SlotState) -> List[Choice]:
+    """The 'leave what is already there' entries, one per option not on the menu.
 
     Esc and Ctrl are the two most popular Caps Lock remappings and neither is
     among the four this project recommends.  Dropping them silently would
     damage exactly the people the tool is for.
+
+    With several options claiming the key there is no single current setting:
+    xkb picks the winner by rule order, which the list order says nothing
+    about.  So each unoffered one gets its own entry, and the menu asks.
     """
-    if not state.present:
-        return None
-    if not state.conflicted and state.slot.choice_for_option(state.current):
-        return None
-    if state.conflicted:
-        return Choice(
-            "keep",
-            state.current,
-            "keep %s and drop the others (%s)"
-            % (state.current, ", ".join(state.present[1:])),
-        )
-    return Choice("keep", state.current, "keep %s -- %s" % (state.current, describe(state.current)))
+    keeps = []
+    for option in state.present:
+        if state.slot.choice_for_option(option) is not None:
+            continue
+        if state.conflicted:
+            others = [other for other in state.present if other != option]
+            label = "keep %s, drop %s" % (option, ", ".join(others))
+        else:
+            label = "keep %s -- %s" % (option, describe(option))
+        keeps.append(Choice("keep", option, label))
+    return keeps
 
 
 def menu_choices(state: SlotState) -> List[Choice]:
-    extra = keep_choice(state)
-    return ([extra] if extra else []) + state.slot.choices
+    return keep_choices(state) + state.slot.choices
 
 
 # ---------------------------------------------------------------------------
@@ -748,14 +750,15 @@ def uninstall_config() -> None:
             existing = handle.read()
         if OUR_OPTION in existing:
             stripped = strip_our_option(existing)
-            backup(registry)
             if stripped is None:
-                print("  left %s alone: it holds options besides ours." % registry)
+                print("  left %s alone: our <option> block is not in the shape we wrote it." % registry)
                 print("  Remove the caps:shift_modifier <option> block by hand if you want it gone.")
             elif stripped.count("<option") == 0 and stripped.count("<group") == 0:
+                backup(registry)
                 os.remove(registry)
                 print("  removed %s (nothing of yours was in it)" % registry)
             else:
+                backup(registry)
                 write_file(registry, stripped)
                 print("  removed our option from %s" % registry)
 
@@ -817,9 +820,20 @@ def verify_keymap(options: Sequence[str]) -> Optional[bool]:
     if not shutil.which("xkbcli"):
         return None
     env = dict(os.environ, XDG_CONFIG_HOME=config_home())
-    output = run(
-        ["xkbcli", "compile-keymap", "--layout", "us", "--options", ",".join(options)], env=env
-    )
+    try:
+        output = run(
+            ["xkbcli", "compile-keymap", "--layout", "us", "--options", ",".join(options)], env=env
+        )
+    except Problem as error:
+        # The whole resulting list is compiled, not just our option, so that an
+        # unmanaged option claiming <CAPS> is caught too -- and so an option
+        # this xkeyboard-config has never heard of lands here as well.
+        raise Problem(
+            "%s\n\n"
+            "The option list was left alone, so your keyboard is unchanged.  Every\n"
+            "option above is compiled, not only this tool's, so an entry your\n"
+            "xkeyboard-config does not know fails here too." % error
+        )
     match = re.search(r"key\s+<CAPS>\s*\{(.*?)\};", output, re.DOTALL)
     if not match:
         return False
@@ -1013,29 +1027,31 @@ def menu(backend: SettingsBackend, dry_run: bool) -> int:
             print("   you the classic Caps Lock, and the LED keeps working.)")
         default_index = 1
         for index, choice in enumerate(choices, start=1):
+            # A conflicted slot has nothing to preselect: see keep_choices.
             marker = " "
-            if choice.option == current or (choice.key == "keep" and state.present):
+            if not state.conflicted and choice.option == current:
                 marker = "*"
                 default_index = index
             print("  %s %d) %s" % (marker, index, choice.label))
         if state.conflicted:
-            print("  ! more than one option currently claims this key; picking any entry")
-            print("    above resolves that.")
+            print("  ! more than one option currently claims this key, so nothing is")
+            print("    preselected; picking any entry above resolves it.")
 
-        chosen = prompt_index(len(choices), default_index)
+        chosen = prompt_index(len(choices), None if state.conflicted else default_index)
         selection[slot.key] = choices[chosen - 1].option
         print()
 
     return apply(backend, selection, dry_run=dry_run, interactive=True)
 
 
-def prompt_index(count: int, default: int) -> int:
+def prompt_index(count: int, default: Optional[int]) -> int:
+    """default None asks until answered, for a slot that has nothing to repeat."""
     while True:
         try:
-            answer = input("  choice [%d]: " % default).strip()
+            answer = input("  choice: " if default is None else "  choice [%d]: " % default).strip()
         except EOFError:
-            return default
-        if not answer:
+            return default or 1
+        if not answer and default is not None:
             return default
         if answer.isdigit() and 1 <= int(answer) <= count:
             return int(answer)
@@ -1067,8 +1083,8 @@ def parse_set(argument: str, backend: SettingsBackend) -> Dict[str, Optional[str
     selection: Dict[str, Optional[str]] = {}
     for slot in SLOTS:
         state = states[slot.key]
-        keep = keep_choice(state)
-        selection[slot.key] = keep.option if keep else state.current
+        keeps = keep_choices(state)
+        selection[slot.key] = keeps[0].option if keeps else state.current
 
     for pair in argument.split(","):
         pair = pair.strip()

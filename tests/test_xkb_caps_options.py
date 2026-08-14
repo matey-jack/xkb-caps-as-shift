@@ -9,7 +9,9 @@ fake `gsettings` on PATH, which is what makes "unrelated options survive"
 testable without a desktop session.
 """
 
+import contextlib
 import importlib.util
+import io
 import os
 import shutil
 import subprocess
@@ -18,6 +20,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ElementTree
 from importlib.machinery import SourceFileLoader
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(REPO, "xkb-caps-options.py")
@@ -155,6 +158,46 @@ class MergeRegistryTests(unittest.TestCase):
         self.assertIsNone(self.caps_group_options(tool.strip_our_option(merged)))
 
 
+class UninstallConfigTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        self.rules_dir = os.path.join(tmp, "xkb", "rules")
+        os.makedirs(self.rules_dir)
+        self.registry = os.path.join(self.rules_dir, "evdev.xml")
+        patcher = mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": tmp})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def uninstall(self):
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            tool.uninstall_config()
+        return out.getvalue()
+
+    def test_a_registry_it_cannot_recognise_is_left_untouched(self):
+        merged = tool.merge_registry(USER_REGISTRY)
+        doubled = merged.replace(tool.OUR_OPTION_BLOCK, tool.OUR_OPTION_BLOCK * 2)
+        with open(self.registry, "w", encoding="utf-8") as handle:
+            handle.write(doubled)
+
+        output = self.uninstall()
+
+        self.assertIn("left", output)
+        with open(self.registry, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), doubled)
+        self.assertEqual(os.listdir(self.rules_dir), ["evdev.xml"], "no backup of an untouched file")
+
+    def test_a_registry_it_wrote_loses_our_option_and_is_backed_up(self):
+        with open(self.registry, "w", encoding="utf-8") as handle:
+            handle.write(tool.merge_registry(USER_REGISTRY))
+
+        self.uninstall()
+
+        with open(self.registry, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), USER_REGISTRY)
+        self.assertEqual(len(os.listdir(self.rules_dir)), 2, "the file it edited is backed up")
+
+
 class SlotTests(unittest.TestCase):
     def test_unrelated_options_are_not_claimed(self):
         options = ["grp:alt_shift_toggle", "compose:ralt", "terminate:ctrl_alt_bksp", "caps:escape"]
@@ -170,18 +213,30 @@ class SlotTests(unittest.TestCase):
 
     def test_a_caps_mapping_we_do_not_offer_is_kept_not_dropped(self):
         states, _ = tool.read_state(["ctrl:nocaps"])
-        keep = tool.keep_choice(states["caps"])
-        self.assertIsNotNone(keep)
-        self.assertEqual(keep.option, "ctrl:nocaps")
+        keeps = tool.keep_choices(states["caps"])
+        self.assertEqual([keep.option for keep in keeps], ["ctrl:nocaps"])
 
     def test_a_caps_mapping_we_do_offer_needs_no_keep_entry(self):
         states, _ = tool.read_state(["caps:none"])
-        self.assertIsNone(tool.keep_choice(states["caps"]))
+        self.assertEqual(tool.keep_choices(states["caps"]), [])
 
     def test_competing_options_show_up_as_a_conflict(self):
         states, _ = tool.read_state([tool.OUR_OPTION, "lv3:caps_switch"])
         self.assertTrue(states["caps"].conflicted)
         self.assertIn("conflict", states["caps"].label())
+
+    def test_a_conflict_offers_every_unoffered_option_on_its_own(self):
+        # Which of the two is in effect is decided by rule order, so neither
+        # may be presented as the current setting.
+        states, _ = tool.read_state(["ctrl:nocaps", "caps:escape"])
+        keeps = tool.keep_choices(states["caps"])
+        self.assertEqual([keep.option for keep in keeps], ["ctrl:nocaps", "caps:escape"])
+        self.assertIn("drop caps:escape", keeps[0].label)
+        self.assertIn("drop ctrl:nocaps", keeps[1].label)
+
+    def test_a_conflict_between_offered_options_needs_no_keep_entry(self):
+        states, _ = tool.read_state([tool.OUR_OPTION, "lv3:caps_switch"])
+        self.assertEqual(tool.keep_choices(states["caps"]), [])
 
     def test_every_claimed_option_is_a_real_xkb_option(self):
         rules = "/usr/share/X11/xkb/rules/evdev"
@@ -221,6 +276,16 @@ class EmbeddedConfigTests(unittest.TestCase):
 
     def test_a_checkout_reads_the_files_not_the_constants(self):
         self.assertEqual(tool.source_config_dir(), os.path.join(REPO, "config", "xkb"))
+
+
+class PromptTests(unittest.TestCase):
+    def test_enter_takes_the_default(self):
+        with mock.patch("builtins.input", side_effect=[""]):
+            self.assertEqual(tool.prompt_index(4, 3), 3)
+
+    def test_a_conflicted_slot_asks_until_it_gets_an_answer(self):
+        with mock.patch("builtins.input", side_effect=["", "2"]), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(tool.prompt_index(4, None), 2)
 
 
 FAKE_GSETTINGS = """#!/bin/sh
