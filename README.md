@@ -6,6 +6,11 @@ ISO keyboards have two ergonomic problems compared to the US ANSI layout:
    thus requiring awkward hand contortions to input any AltGr character on the right side of the keyboard.
 
 With this project, you can fix both problems on your Linux computers by adding a better left Shift key and a left AltGr key.
+(There's a similar technology available on Windows and Mac. 
+See [this superuser post](https://superuser.com/questions/550679/where-can-i-find-windows-keyboard-scancode-registry-information)
+for how to do it in Windows. 
+Ready-made .reg files for CapsLock and AltGr are in my [keyboard-layer3](https://github.com/matey-jack/keyboard-layer3/tree/main/scancode-mappings) 
+project.)
 
 Here are the default choices that I recommend, but the configuration allows you to pick any combination:
 
@@ -20,6 +25,9 @@ But you can also virtually restore the ANSI left Shift key and use CapsLock as A
 In all cases, the existing CapsLock functionality can be made available, if desired. 
 When choosing so, you can press two shift keys together for locking Caps mode 
 and press any Shift key to end the lock mode.
+
+As for re-placing the characters that the LSGT originally carried, that's out of scope here, since it depends on your local layout.
+But as an example for German, see [xkb-de-l3](https://github.com/matey-jack/xkb-de-l3).
 
 ## Why is this tool needed?
 
