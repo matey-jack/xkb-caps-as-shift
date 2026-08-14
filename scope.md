@@ -41,6 +41,8 @@ The exclusive choice per key is not just "the caps group plus one AltGr option" 
 
 Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be selected alongside it, and the result is decided silently by rule order rather than by the user. Verified: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles to `ISO_Level3_Shift` — `lv3` wins no matter which order the two appear in.
 
+No upstream change fixes that. `allowMultipleSelection` is an attribute of a single group, and the xkbConfigRegistry format has no way to say that options in *different* groups exclude each other. The stock UIs therefore cannot express this conflict at all, and adding `caps:shift_modifier` to them only puts an attractive new entry one panel away from `lv3:caps_switch`, which silently wins.
+
 ### What `caps:shift_modifier` actually does
 
 Spelled out in the README, and it has to be spelled out in the UI's own description too, because most of it is surprising until seen — above all that Shift + CapsLock still gives the classic Caps Lock, and that two real Shift keys do *not*.
@@ -49,7 +51,7 @@ That last part is a separate choice with six stock spellings: `shift:both_capslo
 
 ### why not make a pull-request to include `caps:shift_modifier` in the official xkeyboard-config?
 
-Yes, that would make everything much simpler. 
+Yes, that would make the *installation* much simpler: no `~/.config/xkb` to write, and none of the merging, backing up and verifying that goes with it. It would not make the selection any easier — see above for why nothing upstream can. 
 I am working on that. 
 But the release interval there is a few months and distributions are even slower taking in the latest version.
 
@@ -67,9 +69,15 @@ So anyone wanting to improve their keyboard experience, better drop a small snip
    + tell the user that Gnome Settings and Tweaks cache the option registry, so a newly written `evdev.xml` only shows up there after those apps restart (worst case, after logout). The keymap itself applies immediately;
    + be undoable, along with the rest of the installation.
 
-### possible future improvements
+### The graphical UI
 
-* graphical UI
+**A keyboard diagram, not a menu.** Two keys on the picture are interactive, CapsLock and LSGT; clicking one offers the behaviours for that key. This is the point of building a GUI at all, and it is not about looking nicer: a key drawn on a diagram has nowhere to put a second function, so the exclusivity that "The conflicts the UI has to enforce" spells out stops needing to be explained. The user never has to learn that "a conflict" is a concept, and the `ctrl:nocaps` case, which the terminal menu has to label "keep ctrl:nocaps — Make Caps Lock an additional Ctrl", is just the word `Ctrl` printed on the key cap. The third choice is not a key mapping and does not fit the metaphor: both Shifts together toggling CapsLock stays a checkbox under the diagram.
+
+**GTK4 with a `DrawingArea`, one application for both desktops.** GTK is not Gnome-only — a PyGObject app runs under KDE, it only themes differently — and the desktop difference is already handled by the settings backend, which the GUI reuses unchanged. `python3-gi` is present on any Gnome system, Gnome Tweaks being itself a PyGObject app, and is one package-manager prompt away on KDE through the machinery that already offers `xkbcli`. Rejected: the Qt bindings, preinstalled on neither desktop and hundreds of megabytes; `zenity` and `kdialog`, which need nothing installed but cannot draw a clickable diagram; and two native GUIs, which double the maintenance of the least valuable layer.
+
+**The single inspectable file survives.** The keyboard is an SVG, authored as a real file in the repo and carried in the script exactly as the xkb config already is: another entry in `EMBEDDED_CONFIG`, written by `--regen-embedded` and checked in CI by `--check-embedded`.
+
+**What has to change first.** The slot model, the backends, the merges and the verification are all reusable as they stand. The terminal-only code is `menu`, `prompt_index`, `ask_yes_no` and the `print_*` helpers, plus the printing that `apply` interleaves with the work; extracting a small interface for asking, confirming and reporting is the prerequisite, and it is the same refactor whichever toolkit wins.
 
 ### Non-goals
 
