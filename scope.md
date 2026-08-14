@@ -1,3 +1,4 @@
+
 For preservation of history, here is my initial project brief.
 Claude has added and changed some details as we refined the spec, but it reflects the original idea. 
 
@@ -19,7 +20,7 @@ The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bi
 
 **Wayland only.** `~/.config/xkb/` is a libxkbcommon feature, and the README says why an X11 session cannot see it. Supporting X11 would mean a system-wide install needing root, and that is out of scope. The tool should detect an X11 session and say so plainly instead of offering a choice that cannot take effect.
 
-**Gnome and KDE.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`; KDE keeps its own in `kxkbrc`, under `[Layout] Options`. Reading and writing the list sits behind a small interface rather than being spread through the code, so a third desktop is one class.
+**Gnome and KDE.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`; KDE keeps its own in `kxkbrc`, under `[Layout] Options`. 
 
 **Python 3 has to be there already.** It is a prerequisite rather than something the tool can install, since installing is itself the tool's job and it is written in Python. Every Gnome and KDE system has it. The remaining dependencies are listed in `tech-specs.md`.
 
