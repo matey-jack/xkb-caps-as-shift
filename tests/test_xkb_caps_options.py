@@ -169,8 +169,6 @@ class SlotTests(unittest.TestCase):
         self.assertNotIn("caps:escape", result)
 
     def test_a_caps_mapping_we_do_not_offer_is_kept_not_dropped(self):
-        # ctrl:nocaps is the single most common Caps Lock remapping and is not
-        # one of the four choices, so it has to survive as "keep current".
         states, _ = tool.read_state(["ctrl:nocaps"])
         keep = tool.keep_choice(states["caps"])
         self.assertIsNotNone(keep)

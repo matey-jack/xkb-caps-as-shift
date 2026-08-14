@@ -26,10 +26,9 @@ That single rule delivers conflict-freedom, preservation of unrelated options, a
 as literal data at the top of the file, so they are easy to audit and easy to extend when
 xkeyboard-config adds an option.
 
-The non-interactive interface is the same model spelled out: `--set caps=shift,lsgt=altgr`
-takes `slot=value` pairs where the values are the choice names (`default`, `shift`,
-`altgr`, `none`, `yes`, `no`) plus `keep`. A slot nobody mentions keeps what it has, which
-is what makes the command idempotent and safe in a dotfile.
+The non-interactive interface is the same model spelled out: `--set` takes `slot=value`
+pairs where the values are the choice names. A slot nobody mentions keeps what it has,
+which is what makes the command idempotent and safe in a dotfile.
 
 Descriptions are not embedded. The tool reads them out of the xkb registry the desktop
 itself uses — `$XDG_CONFIG_HOME/xkb/rules/evdev.xml`, then `/etc/xkb`, then

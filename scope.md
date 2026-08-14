@@ -17,7 +17,7 @@ The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bi
 
 ### Supported environments
 
-**Wayland only.** `~/.config/xkb/` is a libxkbcommon feature, so a Wayland compositor reads it, while an X11 session compiles its keymap with the X server's own `xkbcomp`, whose include path is `/usr/share/X11/xkb` and which never looks in the home directory. Supporting X11 would mean a system-wide install needing root, and that is out of scope. The tool should detect an X11 session and say so plainly instead of offering a choice that cannot take effect.
+**Wayland only.** `~/.config/xkb/` is a libxkbcommon feature, and the README says why an X11 session cannot see it. Supporting X11 would mean a system-wide install needing root, and that is out of scope. The tool should detect an X11 session and say so plainly instead of offering a choice that cannot take effect.
 
 **Gnome only, for now.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`. KDE keeps its own list in `kxkbrc` and may be added later, so reading and writing the option list should sit behind a small interface rather than being spread through the code.
 
@@ -35,8 +35,8 @@ The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bi
 
 The exclusive choice per key is not just "the caps group plus one AltGr option" — it is *every* option that claims that keycode, across six different groups:
 
- - `<CAPS>`: all 18 `caps:*` options (17 stock plus ours), `ctrl:nocaps`, `ctrl:swapcaps`, `ctrl:hyper_capscontrol`, `lv3:caps_switch`, `lv3:caps_switch_latch`, `lv5:caps_switch`, `grp:caps_toggle`, `grp:caps_switch`, `grp:caps_select`, `grp:shift_caps_toggle`, `grp:shift_caps_switch`, `grp:alt_caps_toggle`, `compose:caps`, `compose:caps-altgr`. `ctrl:nocaps` matters most of all: "CapsLock as Ctrl" is the single most common remapping of this key, and it is not in the `caps:*` group at all. `grp_led:caps` is deliberately not on the list — it claims the LED rather than the key, and works alongside every choice.
- - `<LSGT>`: `lv2:lsgt_switch`, `lv3:lsgt_switch`, `lv3:lsgt_switch_latch`, `lv5:lsgt_switch`, `lv5:lsgt_switch_lock`, `lv5:lsgt_switch_lock_cancel`.
+ - `<CAPS>`: all 18 `caps:*` options (17 stock plus ours), three `ctrl:*`, two `lv3:*`, one `lv5:*`, six `grp:*` and two `compose:*`. The ids are `CAPS_CLAIMS` in the script, where a test checks every one of them against the installed `rules/evdev`; repeating them here would only give them a second place to be wrong. `ctrl:nocaps` matters most of all: it is not in the `caps:*` group at all, so nothing in the Gnome UI hints at the conflict. `grp_led:caps` is deliberately not on the list — it claims the LED rather than the key, and works alongside every choice.
+ - `<LSGT>`: one `lv2:*`, two `lv3:*` and three `lv5:*` switches, as `LSGT_CLAIMS`.
 
 Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be selected alongside it, and the result is decided silently by rule order rather than by the user. Verified: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles to `ISO_Level3_Shift` — `lv3` wins no matter which order the two appear in.
 

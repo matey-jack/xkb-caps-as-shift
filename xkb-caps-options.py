@@ -101,8 +101,7 @@ CAPS_CLAIMS = [
     "caps:swapescape",
     OUR_OPTION,
     # And the five other groups that claim the same key without the caps: group
-    # ever being consulted.  ctrl:nocaps belongs here above all: it is the most
-    # common Caps Lock remapping there is.
+    # ever being consulted.
     "ctrl:nocaps",
     "ctrl:swapcaps",
     "ctrl:hyper_capscontrol",
