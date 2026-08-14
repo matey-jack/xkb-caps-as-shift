@@ -4,7 +4,7 @@
 
 Model the domain as **slots**, not as individual options. A slot is one exclusive choice
 together with the full set of option ids that compete for it — for `<CAPS>` and `<LSGT>`
-those sets are listed in `scope.md`, and they span four different option groups:
+those sets are listed in `scope.md`, and they span option groups the UI keeps apart:
 
 ```
 slot "caps"            → every option that claims <CAPS>
@@ -40,8 +40,8 @@ have to be maintained against xkeyboard-config releases.
 ## Verification and testing
 
 A Github Actions job on `ubuntu-24.04` that installs `libxkbcommon-tools` and
-`x11-xkb-utils`, points `XDG_CONFIG_HOME` at the repo's `config/`, and asserts on
-compiled keymaps. The assertions live in `tests/check-keymaps.sh` and
+`x11-xkb-utils` and asserts on compiled keymaps. The assertions live in
+`tests/check-keymaps.sh`, which points `XDG_CONFIG_HOME` at the repo's `config/`, and
 `tests/test_xkb_caps_options.py` rather than in the workflow file, so they can be run
 by hand on the machine where something is actually broken. Together they catch the class
 of bug that otherwise only surfaces as "my keyboard is weird now":

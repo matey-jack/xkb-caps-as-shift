@@ -26,7 +26,7 @@ and press any Shift key to end the lock mode.
 Most of these mappings already exist in xkb. The problem is getting at them:
 ![gnome-tweaks-caps-and-3rd-level.png](docs/gnome-tweaks-caps-and-3rd-level.png)
 
-- relevant options are scattered across four different option groups, so nothing shows you the
+- relevant options are scattered across six different option groups, so nothing shows you the
   behavior of one key in one place;
 - the groups do not agree with each other. Gnome's UI lets you pick only one entry from
   the "Caps Lock behavior" group, but you can happily select "Caps Lock chooses the 3rd
@@ -175,7 +175,7 @@ python3 -m unittest discover -s tests -v   # the tool
 ```
 
 [`scope.md`](scope.md) says what the project is for and where its boundaries are;
-[`tech-specs.md`](tech-specs.md) covers how the tool is installed, modelled, and tested.
+[`tech-specs.md`](tech-specs.md) covers how the tool is modelled and tested.
 
 ## License
 

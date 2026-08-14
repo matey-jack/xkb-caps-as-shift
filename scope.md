@@ -33,9 +33,9 @@ The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bi
 
 ### The conflicts the UI has to enforce
 
-The exclusive choice per key is not just "the caps group plus one AltGr option" — it is *every* option that claims that keycode, across four different groups:
+The exclusive choice per key is not just "the caps group plus one AltGr option" — it is *every* option that claims that keycode, across six different groups:
 
- - `<CAPS>`: all 18 `caps:*` options (17 stock plus ours), `ctrl:nocaps`, `ctrl:swapcaps`, `ctrl:hyper_capscontrol`, `lv3:caps_switch`, `lv3:caps_switch_latch`, `lv5:caps_switch`, `grp:caps_toggle`, `grp:caps_switch`, `grp:caps_select`, `grp:shift_caps_toggle`, `grp:shift_caps_switch`, `grp:alt_caps_toggle`, `compose:caps`, `compose:caps-altgr`. That is seven groups, not four. `ctrl:nocaps` matters most of all: "CapsLock as Ctrl" is the single most common remapping of this key, and it is not in the `caps:*` group at all. `grp_led:caps` is deliberately not on the list — it claims the LED rather than the key, and works alongside every choice.
+ - `<CAPS>`: all 18 `caps:*` options (17 stock plus ours), `ctrl:nocaps`, `ctrl:swapcaps`, `ctrl:hyper_capscontrol`, `lv3:caps_switch`, `lv3:caps_switch_latch`, `lv5:caps_switch`, `grp:caps_toggle`, `grp:caps_switch`, `grp:caps_select`, `grp:shift_caps_toggle`, `grp:shift_caps_switch`, `grp:alt_caps_toggle`, `compose:caps`, `compose:caps-altgr`. `ctrl:nocaps` matters most of all: "CapsLock as Ctrl" is the single most common remapping of this key, and it is not in the `caps:*` group at all. `grp_led:caps` is deliberately not on the list — it claims the LED rather than the key, and works alongside every choice.
  - `<LSGT>`: `lv2:lsgt_switch`, `lv3:lsgt_switch`, `lv3:lsgt_switch_latch`, `lv5:lsgt_switch`, `lv5:lsgt_switch_lock`, `lv5:lsgt_switch_lock_cancel`.
 
 Only the `caps:*` set is made exclusive by the Gnome Tweaks UI; the rest can be selected alongside it, and the result is decided silently by rule order rather than by the user. Verified: with `caps:shift_modifier` and `lv3:caps_switch` both set, `<CAPS>` compiles to `ISO_Level3_Shift` — `lv3` wins no matter which order the two appear in.
@@ -57,7 +57,7 @@ So anyone wanting to improve their keyboard experience, better drop a small snip
 
 ### Other things the project needs
 
- - the tool installs itself, in the shape worked out in `tech-specs.md`: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options.py --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+ - the tool installs itself: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options.py --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
 
  - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;

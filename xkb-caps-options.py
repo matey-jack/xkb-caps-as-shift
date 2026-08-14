@@ -100,7 +100,7 @@ CAPS_CLAIMS = [
     "caps:super",
     "caps:swapescape",
     OUR_OPTION,
-    # And the six other groups that claim the same key without the caps: group
+    # And the five other groups that claim the same key without the caps: group
     # ever being consulted.  ctrl:nocaps belongs here above all: it is the most
     # common Caps Lock remapping there is.
     "ctrl:nocaps",
