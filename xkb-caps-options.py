@@ -507,12 +507,13 @@ def keep_choices(state: SlotState) -> List[Choice]:
     """The 'leave what is already there' entries, one per option not on the menu.
 
     Esc and Ctrl are the two most popular Caps Lock remappings and neither is
-    among the four this project recommends.  Dropping them silently would
-    damage exactly the people the tool is for.
+    among the four this project recommends.
+    This is why it's so important to include the current setting in the choice list,
+    even if otherwise wouldn't.
 
     With several options claiming the key there is no single current setting:
-    xkb picks the winner by rule order, which the list order says nothing
-    about.  So each unoffered one gets its own entry, and the menu asks.
+    xkb picks the winner by rule order, which the list order says nothing about.
+    We force the user to choose one.
     """
     keeps = []
     for option in state.present:
