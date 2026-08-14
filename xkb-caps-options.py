@@ -350,12 +350,13 @@ def describe(option: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# The settings backend.  Gnome today, kxkbrc later -- hence the interface.
+# The settings backend: where the desktop keeps its xkb option list.
 # ---------------------------------------------------------------------------
 
 
 class SettingsBackend:
     name = "none"
+    desktop = ""
 
     def available(self) -> bool:
         raise NotImplementedError
@@ -366,9 +367,18 @@ class SettingsBackend:
     def write(self, options: Sequence[str]) -> None:
         raise NotImplementedError
 
+    def applied_note(self) -> str:
+        """What to tell the user about when the new list takes effect."""
+        raise NotImplementedError
+
+    def new_option_note(self) -> str:
+        """The same, for an option that was only just written to disk."""
+        raise NotImplementedError
+
 
 class GnomeBackend(SettingsBackend):
     name = "GNOME (gsettings)"
+    desktop = "GNOME"
     SCHEMA = "org.gnome.desktop.input-sources"
     KEY = "xkb-options"
 
@@ -391,6 +401,88 @@ class GnomeBackend(SettingsBackend):
         literal = "[" + ", ".join("'%s'" % option for option in options) + "]"
         run(["gsettings", "set", self.SCHEMA, self.KEY, literal])
 
+    def applied_note(self) -> str:
+        return "The mapping applies immediately; no logout needed."
+
+    def new_option_note(self) -> str:
+        return (
+            "GNOME Settings and Tweaks read the list of available options once at startup,\n"
+            "so restart them before looking for the new entry in their menus."
+        )
+
+
+class KdeBackend(SettingsBackend):
+    """kxkbrc, through the kconfig CLI rather than by editing the file.
+
+    KDE config cascades over /etc/xdg and kdeglobals and has its own escaping;
+    kreadconfig/kwriteconfig are the only way to see the same value KDE does.
+    """
+
+    desktop = "KDE"
+    FILE = "kxkbrc"
+    GROUP = "Layout"
+    KEY = "Options"
+
+    def __init__(self) -> None:
+        self.reader: Optional[str] = None
+        self.writer: Optional[str] = None
+        self.notified = False
+        for suffix in ("6", "5"):
+            reader = shutil.which("kreadconfig" + suffix)
+            writer = shutil.which("kwriteconfig" + suffix)
+            if reader and writer:
+                self.reader, self.writer, self.name = reader, writer, "KDE (kwriteconfig%s)" % suffix
+                break
+
+    def available(self) -> bool:
+        return self.writer is not None
+
+    def read(self) -> List[str]:
+        raw = run([self.reader, "--file", self.FILE, "--group", self.GROUP, "--key", self.KEY])
+        return [option for option in (part.strip() for part in raw.split(",")) if option]
+
+    def write(self, options: Sequence[str]) -> None:
+        # Without ResetOldOptions the list is merged into what xkb already has
+        # instead of replacing it, and one choice per key stops being one choice.
+        self.write_key("ResetOldOptions", "true")
+        notified = self.write_key(self.KEY, ",".join(options))
+        self.notified = self.reload() or notified
+
+    def write_key(self, key: str, value: str) -> bool:
+        """Write one key; returns whether the change notification went out.
+
+        A kwriteconfig too old for --notify fails on the flag without writing,
+        so the plain form is the retry rather than the first attempt.
+        """
+        command = [self.writer, "--file", self.FILE, "--group", self.GROUP, "--key", key]
+        try:
+            run(command + ["--notify", value])
+            return True
+        except Problem:
+            run(command + [value])
+            return False
+
+    def reload(self) -> bool:
+        """The signal Plasma listened to before it started watching the file."""
+        if not shutil.which("dbus-send"):
+            return False
+        try:
+            run(["dbus-send", "--session", "--type=signal", "/Layouts", "org.kde.keyboard.reloadConfig"])
+        except Problem:
+            return False
+        return True
+
+    def applied_note(self) -> str:
+        if self.notified:
+            return "Plasma was asked to reload its keyboard config; if nothing changed, log out\nand back in."
+        return "Log out and back in for the new option list to take effect."
+
+    def new_option_note(self) -> str:
+        return (
+            "The Keyboard page in System Settings reads the list of available options once\n"
+            "at startup, so restart it before looking for the new entry."
+        )
+
 
 def run(command: Sequence[str], env: Optional[Dict[str, str]] = None) -> str:
     try:
@@ -407,14 +499,27 @@ def run(command: Sequence[str], env: Optional[Dict[str, str]] = None) -> str:
     return result.stdout
 
 
+BACKENDS = (GnomeBackend, KdeBackend)
+
+
 def get_backend() -> SettingsBackend:
-    backend = GnomeBackend()
-    if not backend.available():
-        raise Problem(
-            "gsettings was not found, so the option list cannot be read or written.\n"
-            "That means this is not a GNOME session; KDE support is not written yet."
-        )
-    return backend
+    """The backend for this desktop, by name first and by what is installed second.
+
+    Availability alone would not do: gsettings comes with glib and is present on
+    plenty of KDE systems, where writing GNOME's schema would change nothing.
+    """
+    available = [backend for backend in (cls() for cls in BACKENDS) if backend.available()]
+    desktop = os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+    for backend in available:
+        if backend.desktop in desktop:
+            return backend
+    if available:
+        return available[0]
+    raise Problem(
+        "Neither gsettings nor kwriteconfig was found, so the option list cannot be\n"
+        "read or written.  This tool sets the list through GNOME or KDE; under any\n"
+        "other compositor, put the options in that compositor's own config instead."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -422,7 +527,7 @@ def get_backend() -> SettingsBackend:
 # ---------------------------------------------------------------------------
 
 
-def check_session(strict: bool = True) -> List[str]:
+def check_session(backend: SettingsBackend, strict: bool = True) -> List[str]:
     """Returns warnings; raises if the session cannot work at all."""
     warnings = []
     session_type = os.environ.get("XDG_SESSION_TYPE", "").lower()
@@ -442,11 +547,11 @@ def check_session(strict: bool = True) -> List[str]:
         warnings.append("could not tell whether this is a Wayland session")
 
     desktop = os.environ.get("XDG_CURRENT_DESKTOP", "")
-    if "GNOME" not in desktop.upper():
+    if backend.desktop not in desktop.upper():
         warnings.append(
-            "this does not look like GNOME (XDG_CURRENT_DESKTOP=%r); the keymap files work\n"
-            "  under any Wayland compositor, but the option list is read from GNOME's gsettings"
-            % desktop
+            "this does not look like %s (XDG_CURRENT_DESKTOP=%r); the keymap files work\n"
+            "  under any Wayland compositor, but the option list is read with %s"
+            % (backend.desktop, desktop, backend.name)
         )
     return warnings
 
@@ -857,9 +962,8 @@ def install_self() -> int:
             "xkb-caps-as-shift/main/xkb-caps-options.py\n"
             "  python3 xkb-caps-options.py --install"
         )
-    for warning in check_session(strict=False):
+    for warning in check_session(get_backend(), strict=False):
         print("Note: %s" % warning)
-    get_backend()
 
     target = installed_path()
     os.makedirs(bin_dir(), exist_ok=True)
@@ -978,10 +1082,9 @@ def apply(
     print("Option list is now (%d):" % len(after))
     print_options(after)
     print()
-    print("The mapping applies immediately; no logout needed.")
+    print(backend.applied_note())
     if wants_our_option:
-        print("GNOME Settings and Tweaks read the list of available options once at startup,")
-        print("so restart them before looking for the new entry in their menus.")
+        print(backend.new_option_note())
     return 0
 
 
@@ -1208,11 +1311,11 @@ def main(argv: Sequence[str]) -> int:
     if args.uninstall:
         return uninstall_self(interactive=sys.stdin.isatty())
 
-    for warning in check_session(strict=not (args.get or args.dry_run)):
+    backend = get_backend()
+    for warning in check_session(backend, strict=not (args.get or args.dry_run)):
         print("Note: %s" % warning)
         print()
 
-    backend = get_backend()
     if args.get:
         return do_get(backend)
     if args.set:
