@@ -44,9 +44,14 @@ Spelled out in the README, and it has to be spelled out in the UI's own descript
 
 That last part is a separate choice with six stock spellings: `shift:both_capslock`, `shift:both_capslock_cancel`, and the `lshift_`/`rshift_` variant of each. "Yes" writes **`shift:both_capslock_cancel`**, because the `_cancel` ones additionally switch Caps Lock *off* when one Shift is pressed alone, which fits this project's ergonomics better — with CapsLock used as a Shift you will hit a Shift key far more often than you want Caps Lock. All six are recognised on the way in, so an existing setting is read correctly and replaced rather than duplicated.
 
-### Scope questions still open
+### why not make a pull-request to include `caps:shift_modifier` in the official xkeyboard-config?
 
- - **Is upstreaming `caps:shift_modifier` to xkeyboard-config a goal?** It is a small patch (a symbols section, a rules line, an entry in `base.xml.in`) and the implementation is already an exact copy of an idiom upstream uses elsewhere. If it lands, the whole install-and-merge machinery becomes unnecessary for future distro releases and this project shrinks to the selector tool.
+Yes, that would make everything much simpler. 
+I am working on that. 
+But the release interval there is a few months and distributions are even slower taking in the latest version.
+
+So anyone wanting to improve their keyboard experience, better drop a small snippet of code into your local ~/.config/xkb than waiting for the upstream PR to land.
+
 
 ### Other things the project needs
 
@@ -59,33 +64,13 @@ That last part is a separate choice with six stock spellings: `shift:both_capslo
    + tell the user that Gnome Settings and Tweaks cache the option registry, so a newly written `evdev.xml` only shows up there after those apps restart (worst case, after logout). The keymap itself applies immediately;
    + be undoable, along with the rest of the installation.
 
- - a ReadMe.md explaining the motivation and how to use it
+### possible future improvements
 
- - a CI job that compiles the keymap and asserts on the result, as specified in `tech-specs.md`.
-
-All four are done. What remains open is the graphical UI, KDE support, and the upstreaming question above.
+* graphical UI
+* KDE support
 
 ### Non-goals
 
  - a general-purpose keyboard remapper, or a replacement for GNOME Settings
  - per-layout or per-device options
  - support for setups that do not go through xkb at all
-
-## technical design
-
-The most important criterion is that as many typical / popular current Linux already have the interpreter and libs on board or offer them in their package repositories. The GUI doesn't need to be pretty.
-
-**First iteration: Python 3 with a command line interface and a terminal UI.** Python 3 is on every Gnome system already, the whole tool fits in a single file that anyone can read before running it, and the standard library covers everything needed — `gsettings` is called as a CLI tool, so there is nothing to import beyond it. The CLI (`--get`, `--set`, `--dry-run`) and the menu share the same code, which also makes the tool testable without driving a UI.
-
-A graphical UI is a later iteration, as a second entry point in the same file: PyGObject is present on Gnome systems, and only then does the .desktop file become useful.
-
-The remaining technical decisions — how the tool is installed, how the options are modelled, and how it is tested — are in `tech-specs.md`.
-
-
-names of some of the relevant existing xkb options, as spelled in xkeyboard-config 2.41 (the Ubuntu 24.04 version):
-+ 'shift:both_capslock' and its five siblings
-+ 'caps:none' and the other 16 options in the caps:* group. Note that `rules/evdev` has one more than the Gnome UI shows: `caps:escape_shifted_compose` has no entry in `rules/evdev.xml`, so it can be set through gsettings while being invisible in Tweaks.
-+ 'lv3:caps_switch', which is also exclusive with all the caps:* settings, but this is not enforced by the existing Gnome Tweaks UI. (Note the spelling: the group is 'lv3', not 'lvl3', and every one of these options carries a '_switch' suffix.)
-+ 'lv3:lsgt_switch' and 'lv2:lsgt_switch' which are also mutually exclusive.
-
-`docs/gnome-tweaks-caps-and-3rd-level.png` shows the Gnome Tweaks dialog with the Caps Lock and 3rd level groups expanded. Note that it is a screenshot taken *after* installing this project: the selected entry, "Make Caps Lock an additional Shift", is the option added here and is not part of stock xkb.

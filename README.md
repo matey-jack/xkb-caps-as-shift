@@ -1,21 +1,31 @@
 # xkb-caps-as-shift
 
-Makes the Caps Lock key work as a plain Shift key on Linux — the momentary kind that
-shifts while you hold it, not the locking kind — while keeping the real Caps Lock
-available on Shift + Caps Lock.
+ISO keyboards have two ergonomic problems compared to the US ANSI layout:
+ - the left Shift key is much smaller and further away from standard typing position, making the key hard to reach.
+ - a lot of characters are assigned to the AltGr layer on both hands, yet there is only one AltGr on the right hand, 
+   thus requiring awkward hand contortions to input any AltGr character on the right side of the keyboard.
 
-## Why
+With this project, you can fix both problems on your Linux computers by adding a better left Shift key and a left AltGr key.
 
-Caps Lock sits on the home row, right under your little finger, and does almost nothing.
-The keys you actually reach for constantly are Shift and AltGr. So move them there: Caps
-Lock becomes Shift, and the key left of Z on ISO keyboards — `LSGT`, also known as the ISO
-key, 102nd, or Non-US Backslash — becomes AltGr. The other way round works too, and has
-the advantage of matching the muscle memory of an ANSI keyboard, where the key in that
-position *is* a Shift.
+Here are the default choices that I recommend, but the configuration allows you to pick any combination:
+
+I personally use CapsLock as Shift and put AltGr below:
+![iso_caps_as_shift.png](docs/iso_caps_as_shift.png)
+I like this better, because Shift is used much more frequently, not only for capital letters, but also for the most frequent punctuation characters. 
+Therefor I put it in the best position.
+
+But you can also virtually restore the ANSI left Shift key and use CapsLock as AltGr:
+![iso_caps_as_algr.png](docs/iso_caps_as_algr.png)
+
+In all cases, the existing CapsLock functionality can be reached by pressing two shift keys together for locking Caps mode 
+and pressing any Shift key to end the lock mode.
+
+## Why is this tool needed?
 
 Most of these mappings already exist in xkb. The problem is getting at them:
+![gnome-tweaks-caps-and-3rd-level.png](docs/gnome-tweaks-caps-and-3rd-level.png)
 
-- they are scattered across four different option groups, so nothing shows you the
+- relevant options are scattered across four different option groups, so nothing shows you the
   behavior of one key in one place;
 - the groups do not agree with each other. Gnome's UI lets you pick only one entry from
   the "Caps Lock behavior" group, but you can happily select "Caps Lock chooses the 3rd
@@ -24,7 +34,8 @@ Most of these mappings already exist in xkb. The problem is getting at them:
   stock xkb at all.
 
 This project fills in that missing option, and gives you a small tool that makes the
-selection consistent.
+selection consistent. (Fyi, in Gnome Tweaks "2nd level" means the shifted characters, 
+"3rd level" means AltGr.)
 
 ## What you get
 
@@ -57,9 +68,9 @@ settings alone.
 Download the tool, read it, run it once:
 
 ```sh
-curl -fsSLO https://raw.githubusercontent.com/matey-jack/xkb-caps-as-shift/main/xkb-caps-options
+curl -fsSLO https://raw.githubusercontent.com/matey-jack/xkb-caps-as-shift/main/xkb-caps-options.py
 less xkb-caps-options          # this is the whole product, not a bootstrap
-python3 xkb-caps-options --install
+python3 xkb-caps-options.py --install
 ```
 
 That copies it to `~/.local/bin` and makes it executable, so every later run is just
