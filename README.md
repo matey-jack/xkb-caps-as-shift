@@ -83,11 +83,11 @@ xkb-caps-options
 It asks three questions, each with your current setting preselected, and then prints the
 resulting option list with a description for every entry.
 
-| question | what it can set |
-|---|---|
-| Caps Lock | unchanged · Shift (`caps:shift_modifier`) · AltGr (`lv3:caps_switch`) · disabled (`caps:none`) |
-| the `LSGT` key | the layout default · Shift (`lv2:lsgt_switch`) · AltGr (`lv3:lsgt_switch`) |
-| both Shifts together toggle Caps Lock | no · yes (`shift:both_capslock_cancel`, so one Shift alone switches it back off) |
+| question                              | what it can set                                                                                |
+|---------------------------------------|------------------------------------------------------------------------------------------------|
+| Caps Lock                             | unchanged · Shift (`caps:shift_modifier`) · AltGr (`lv3:caps_switch`) · disabled (`caps:none`) |
+| the `LSGT` key                        | the layout default · Shift (`lv2:lsgt_switch`) · AltGr (`lv3:lsgt_switch`)                     |
+| both Shifts together toggle Caps Lock | no · yes (`shift:both_capslock_cancel`, so one Shift alone switches it back off)               |
 
 If your Caps Lock is currently set to something that is not on that list — `ctrl:nocaps`
 and `caps:escape` are the common ones — it appears as an extra, preselected entry, so
