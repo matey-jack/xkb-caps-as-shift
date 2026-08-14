@@ -3,8 +3,8 @@
 ## The core data model
 
 Model the domain as **slots**, not as individual options. A slot is one exclusive choice
-together with the full set of option ids that compete for it — for `<CAPS>` and `<LSGT>`
-those sets are listed in `scope.md`, and they span option groups the UI keeps apart:
+together with the full set of option ids that compete for it — `CAPS_CLAIMS` and
+`LSGT_CLAIMS` in the script, spanning option groups the UI keeps apart:
 
 ```
 slot "caps"            → every option that claims <CAPS>
