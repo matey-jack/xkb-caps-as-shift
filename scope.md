@@ -19,9 +19,9 @@ The script is `xkb-caps-options.py` in the repo and is installed to `~/.local/bi
 
 **Wayland only.** `~/.config/xkb/` is a libxkbcommon feature, and the README says why an X11 session cannot see it. Supporting X11 would mean a system-wide install needing root, and that is out of scope. The tool should detect an X11 session and say so plainly instead of offering a choice that cannot take effect.
 
-**Gnome only, for now.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`. KDE keeps its own list in `kxkbrc` and may be added later, so reading and writing the option list should sit behind a small interface rather than being spread through the code.
+**Gnome and KDE.** Gnome keeps the option list in gsettings, under `org.gnome.desktop.input-sources xkb-options`; KDE keeps its own in `kxkbrc`, under `[Layout] Options`. Reading and writing the list sits behind a small interface rather than being spread through the code, so a third desktop is one class.
 
-**Python 3 has to be there already.** It is a prerequisite rather than something the tool can install, since installing is itself the tool's job and it is written in Python. Every Gnome system has it. The remaining dependencies are listed in `tech-specs.md`.
+**Python 3 has to be there already.** It is a prerequisite rather than something the tool can install, since installing is itself the tool's job and it is written in Python. Every Gnome and KDE system has it. The remaining dependencies are listed in `tech-specs.md`.
 
 ### Requirements the UI has to meet
 
@@ -57,7 +57,7 @@ So anyone wanting to improve their keyboard experience, better drop a small snip
 
 ### Other things the project needs
 
- - the tool installs itself: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options.py --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, `gsettings`. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (`gsettings` access can be via library or calling the CLI tool or whatever other way fits.)
+ - the tool installs itself: the user downloads the single script, reads it, and runs it once as `python3 xkb-caps-options.py --install`, which puts it in `~/.local/bin`. That step checks the prerequisites that have to hold for the tool to work at all — the Python version, the session type, the settings backend. `xkbcli` is checked where it is actually used, at the verification step, and offered through the distribution's package manager there; demanding it up front would block an installation that does not need it. (Backend access can be via library or calling the CLI tool or whatever other way fits.)
 
  - the xkb config is *not* part of that step. It is written the first time the user actually selects CapsLock as Shift, since every other choice works with stock xkb. That is where these duties belong:
    + honour `XDG_CONFIG_HOME` instead of hardcoding `~/.config`;
@@ -69,7 +69,6 @@ So anyone wanting to improve their keyboard experience, better drop a small snip
 ### possible future improvements
 
 * graphical UI
-* KDE support
 
 ### Non-goals
 

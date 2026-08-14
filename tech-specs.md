@@ -54,8 +54,9 @@ of bug that otherwise only surfaces as "my keyboard is weird now":
   include-path shadowing and will fail where libxkbcommon quietly recovers;
 - assertions over a set of starting option lists, above all "unrelated options survive"
   and "an existing caps option is not silently dropped". These drive the real script with
-  a fake `gsettings` on `PATH` and `XDG_CONFIG_HOME` in a temporary directory, so the
-  parsing, the merge and the write are all exercised without a desktop session;
+  a fake `gsettings` or `kwriteconfig` on `PATH` and `XDG_CONFIG_HOME` in a temporary
+  directory, so the parsing, the merge and the write are all exercised without a desktop
+  session, once per backend;
 - the merges into a `rules/evdev` and `rules/evdev.xml` the user already had, which is the
   only part of this tool that can destroy something: comments and DOCTYPE survive, the
   result is still valid XML, running twice changes nothing, and `--uninstall` returns the

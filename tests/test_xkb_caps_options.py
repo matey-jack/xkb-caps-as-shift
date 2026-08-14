@@ -5,10 +5,11 @@ Run with:  python3 -m unittest discover -s tests -v
 The merge tests are the ones that matter most: merging into a `rules/evdev`
 and `rules/evdev.xml` the user already had is the only part of this tool that
 can destroy something.  The end-to-end tests drive the real script through a
-fake `gsettings` on PATH, which is what makes "unrelated options survive"
-testable without a desktop session.
+fake `gsettings` or `kwriteconfig6` on PATH, which is what makes "unrelated
+options survive" testable without a desktop session, on either desktop.
 """
 
+import ast
 import contextlib
 import importlib.util
 import io
@@ -288,6 +289,37 @@ class PromptTests(unittest.TestCase):
             self.assertEqual(tool.prompt_index(4, None), 2)
 
 
+class BackendChoiceTests(unittest.TestCase):
+    """Which backend a session gets.  Availability alone is not the answer:
+    gsettings ships with glib and is on plenty of KDE systems."""
+
+    def choose(self, desktop, installed):
+        with mock.patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": desktop}), mock.patch.object(
+            tool.shutil, "which", lambda name: name if name in installed else None
+        ):
+            return tool.get_backend()
+
+    def test_kde_session_with_gsettings_installed_still_gets_kde(self):
+        backend = self.choose("KDE", ["gsettings", "kreadconfig6", "kwriteconfig6"])
+        self.assertIsInstance(backend, tool.KdeBackend)
+
+    def test_gnome_session_gets_gnome(self):
+        backend = self.choose("ubuntu:GNOME", ["gsettings", "kreadconfig6", "kwriteconfig6"])
+        self.assertIsInstance(backend, tool.GnomeBackend)
+
+    def test_an_unknown_desktop_falls_back_to_what_is_installed(self):
+        backend = self.choose("sway", ["kreadconfig6", "kwriteconfig6"])
+        self.assertIsInstance(backend, tool.KdeBackend)
+
+    def test_plasma_5_is_used_when_6_is_absent(self):
+        backend = self.choose("KDE", ["kreadconfig5", "kwriteconfig5"])
+        self.assertEqual(backend.name, "KDE (kwriteconfig5)")
+
+    def test_neither_backend_is_a_problem_not_a_crash(self):
+        with self.assertRaises(tool.Problem):
+            self.choose("sway", [])
+
+
 FAKE_GSETTINGS = """#!/bin/sh
 # Enough of gsettings for the tests: one key, kept in a file.
 state="$XKB_TEST_STATE"
@@ -297,9 +329,46 @@ case "$1" in
 esac
 """
 
+FAKE_KREADCONFIG = """#!/bin/sh
+# Enough of kreadconfig6 for the tests: one key, kept in a file.
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --key) key="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+if [ "$key" = Options ] && [ -f "$XKB_TEST_STATE" ]; then cat "$XKB_TEST_STATE"; fi
+"""
 
-class EndToEndTests(unittest.TestCase):
-    """Drives the real script, with gsettings and the config dir faked out."""
+FAKE_KWRITECONFIG = """#!/bin/sh
+# The mirror of it.  Keys other than Options are accepted and dropped.
+value=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --file|--group) shift 2 ;;
+    --key) key="$2"; shift 2 ;;
+    --notify) shift ;;
+    *) value="$1"; shift ;;
+  esac
+done
+[ "$key" = Options ] && printf '%s\\n' "$value" > "$XKB_TEST_STATE"
+exit 0
+"""
+
+FAKE_DBUS_SEND = """#!/bin/sh
+exit 0
+"""
+
+
+class EndToEndCases:
+    """Drives the real script, with the desktop and the config dir faked out.
+
+    Not a TestCase itself; the two subclasses below say which desktop, which
+    fake commands to put on PATH, and how that desktop spells an option list.
+    """
+
+    desktop = ""
+    fakes = {}
 
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -307,27 +376,29 @@ class EndToEndTests(unittest.TestCase):
         self.state = os.path.join(self.tmp, "state")
         bin_dir = os.path.join(self.tmp, "bin")
         os.makedirs(bin_dir)
-        fake = os.path.join(bin_dir, "gsettings")
-        with open(fake, "w", encoding="utf-8") as handle:
-            handle.write(FAKE_GSETTINGS)
-        os.chmod(fake, 0o755)
+        for name, script in self.fakes.items():
+            fake = os.path.join(bin_dir, name)
+            with open(fake, "w", encoding="utf-8") as handle:
+                handle.write(script)
+            os.chmod(fake, 0o755)
         self.config_home = os.path.join(self.tmp, "config")
         self.env = dict(
             os.environ,
             PATH=bin_dir + os.pathsep + os.environ.get("PATH", ""),
             XKB_TEST_STATE=self.state,
             XDG_CONFIG_HOME=self.config_home,
+            XDG_CURRENT_DESKTOP=self.desktop,
         )
         self.env.pop("XDG_SESSION_TYPE", None)
         self.env.pop("WAYLAND_DISPLAY", None)
 
-    def set_options(self, value):
+    def set_options(self, options):
         with open(self.state, "w", encoding="utf-8") as handle:
-            handle.write(value + "\n")
+            handle.write(self.encode(options) + "\n")
 
     def get_options(self):
         with open(self.state, encoding="utf-8") as handle:
-            return handle.read().strip()
+            return self.decode(handle.read().strip())
 
     def run_tool(self, *args, **kwargs):
         result = subprocess.run(
@@ -344,7 +415,7 @@ class EndToEndTests(unittest.TestCase):
         return result.stdout + result.stderr
 
     def test_get_reports_each_slot(self):
-        self.set_options("['grp:alt_shift_toggle', 'caps:escape']")
+        self.set_options(["grp:alt_shift_toggle", "caps:escape"])
         output = self.run_tool("--get")
         self.assertIn("caps:", output)
         self.assertIn("caps:escape", output)
@@ -352,18 +423,18 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("not managed by this tool", output)
 
     def test_get_handles_an_empty_list(self):
-        self.set_options("@as []")
+        self.set_options([])
         self.assertIn("empty", self.run_tool("--get"))
 
     def test_dry_run_writes_nothing(self):
-        self.set_options("['grp:alt_shift_toggle']")
+        self.set_options(["grp:alt_shift_toggle"])
         output = self.run_tool("--set", "caps=shift", "--dry-run")
         self.assertIn("nothing was written", output)
-        self.assertEqual(self.get_options(), "['grp:alt_shift_toggle']")
+        self.assertEqual(self.get_options(), ["grp:alt_shift_toggle"])
         self.assertFalse(os.path.exists(os.path.join(self.config_home, "xkb")))
 
     def test_set_keeps_options_it_does_not_manage(self):
-        self.set_options("['grp:alt_shift_toggle', 'compose:ralt', 'caps:escape']")
+        self.set_options(["grp:alt_shift_toggle", "compose:ralt", "caps:escape"])
         self.run_tool("--set", "caps=altgr")
         written = self.get_options()
         self.assertIn("grp:alt_shift_toggle", written)
@@ -372,7 +443,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertNotIn("caps:escape", written)
 
     def test_set_leaves_untouched_slots_alone(self):
-        self.set_options("['ctrl:nocaps', 'lv3:lsgt_switch']")
+        self.set_options(["ctrl:nocaps", "lv3:lsgt_switch"])
         self.run_tool("--set", "lsgt=shift")
         written = self.get_options()
         self.assertIn("ctrl:nocaps", written, "an unoffered caps mapping must survive")
@@ -380,7 +451,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertNotIn("lv3:lsgt_switch", written)
 
     def test_setting_caps_as_shift_writes_the_xkb_config(self):
-        self.set_options("@as []")
+        self.set_options([])
         self.run_tool("--set", "caps=shift")
         xkb = os.path.join(self.config_home, "xkb")
         with open(os.path.join(xkb, "rules", "evdev"), encoding="utf-8") as handle:
@@ -389,7 +460,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn(tool.OUR_OPTION, self.get_options())
 
     def test_rerunning_is_a_no_op(self):
-        self.set_options("['grp:alt_shift_toggle']")
+        self.set_options(["grp:alt_shift_toggle"])
         self.run_tool("--set", "caps=shift,lsgt=altgr,both-shift-caps=yes")
         first = self.get_options()
         output = self.run_tool("--set", "caps=shift,lsgt=altgr,both-shift-caps=yes")
@@ -397,22 +468,54 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(self.get_options(), first)
 
     def test_uninstall_takes_ours_out_and_leaves_the_rest(self):
-        self.set_options("['grp:alt_shift_toggle']")
+        self.set_options(["grp:alt_shift_toggle"])
         self.run_tool("--set", "caps=shift")
         self.run_tool("--uninstall")
-        self.assertEqual(self.get_options(), "['grp:alt_shift_toggle']")
+        self.assertEqual(self.get_options(), ["grp:alt_shift_toggle"])
         xkb = os.path.join(self.config_home, "xkb")
         self.assertFalse(os.path.exists(os.path.join(xkb, "symbols", "capslock_shift")))
 
     def test_rejects_an_unknown_slot_or_value(self):
-        self.set_options("@as []")
+        self.set_options([])
         self.assertIn("unknown slot", self.run_tool("--set", "nope=1", expect_failure=True))
         self.assertIn("unknown value", self.run_tool("--set", "caps=nope", expect_failure=True))
 
     def test_refuses_an_x11_session(self):
-        self.set_options("@as []")
+        self.set_options([])
         self.env["XDG_SESSION_TYPE"] = "x11"
         self.assertIn("X11", self.run_tool("--set", "caps=shift", expect_failure=True))
+
+    def test_the_desktop_it_picked_raises_no_warning(self):
+        self.set_options([])
+        self.assertNotIn("does not look like", self.run_tool("--get"))
+
+
+class GnomeEndToEndTests(EndToEndCases, unittest.TestCase):
+    desktop = "GNOME"
+    fakes = {"gsettings": FAKE_GSETTINGS}
+
+    def encode(self, options):
+        if not options:
+            return "@as []"  # what gsettings really prints for an empty list
+        return "[" + ", ".join("'%s'" % option for option in options) + "]"
+
+    def decode(self, raw):
+        return list(ast.literal_eval(raw[4:] if raw.startswith("@as ") else raw))
+
+
+class KdeEndToEndTests(EndToEndCases, unittest.TestCase):
+    desktop = "KDE"
+    fakes = {
+        "kreadconfig6": FAKE_KREADCONFIG,
+        "kwriteconfig6": FAKE_KWRITECONFIG,
+        "dbus-send": FAKE_DBUS_SEND,
+    }
+
+    def encode(self, options):
+        return ",".join(options)
+
+    def decode(self, raw):
+        return [option for option in (part.strip() for part in raw.split(",")) if option]
 
 
 if __name__ == "__main__":

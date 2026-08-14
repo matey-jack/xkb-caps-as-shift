@@ -59,10 +59,10 @@ settings alone.
   libxkbcommon — which is what Wayland compositors use — reads keyboard config from there.
   An X11 session compiles its keymap with the X server's own `xkbcomp`, which never looks
   in your home directory, so this will not work there. The tool checks and says so.
-- **Gnome**, for the settings part. The keymap files themselves work under any Wayland
-  compositor; only the reading and writing of the option list is Gnome-specific. KDE keeps
-  its list somewhere else and is not supported yet.
-- **Python 3.10 or newer**, which every current Gnome system already has.
+- **Gnome or KDE**, for the settings part. The keymap files themselves work under any
+  Wayland compositor; only the reading and writing of the option list is desktop-specific,
+  and it goes through `gsettings` on Gnome and `kwriteconfig` on KDE.
+- **Python 3.10 or newer**, which every current Gnome or KDE system already has.
 
 ## Installing
 
@@ -125,9 +125,10 @@ Your option list almost certainly holds entries this project has no opinion abou
 the list, replaces only the entries belonging to the three questions above, and writes
 the rest back untouched. It never resets the whole list.
 
-The mapping applies immediately; no logout needed. Gnome Settings and Tweaks read the
-list of *available* options once at startup, so a newly written option only appears in
-their menus after those apps restart.
+On Gnome the mapping applies immediately. On KDE the tool asks Plasma to reload, and says
+so; if the change does not take, log out and back in. Either desktop's settings app reads
+the list of *available* options once at startup, so a newly written option only appears in
+its menus after that app restarts.
 
 ## Checking that it worked
 
